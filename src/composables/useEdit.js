@@ -8,9 +8,8 @@ export function useEdit() {
 
   const editPrompt = ref(null)
   const editForm = ref({ title: '', category: '写作', content: '', tags: '' })
-  const currentPage = ref('home')
 
-  const startEdit = (prompt) => {
+  const startEdit = (prompt, navigateTo) => {
     editPrompt.value = prompt
     editForm.value = {
       title: prompt.title,
@@ -18,10 +17,10 @@ export function useEdit() {
       content: prompt.content,
       tags: prompt.tags || ''
     }
-    currentPage.value = 'edit'
+    if (navigateTo) navigateTo('edit/' + prompt.id)
   }
 
-  const onSaveEdit = async () => {
+  const onSaveEdit = async (navigateTo) => {
     if (!editForm.value.title.trim() || !editForm.value.content.trim()) {
       await showAlert('请填写完整信息', '提示', 'warning')
       return false
@@ -33,22 +32,21 @@ export function useEdit() {
     if (success) {
       await showAlert('更新成功！', '成功', 'success')
       editPrompt.value = null
-      currentPage.value = 'home'
+      if (navigateTo) navigateTo('/')
       await fetchPrompts()
       return true
     }
     return false
   }
 
-  const cancelEdit = () => {
+  const cancelEdit = (navigateTo) => {
     editPrompt.value = null
-    currentPage.value = 'home'
+    if (navigateTo) navigateTo('/')
   }
 
   return {
     editPrompt,
     editForm,
-    currentPage,
     startEdit,
     onSaveEdit,
     cancelEdit

@@ -7,12 +7,12 @@
       </div>
       <div class="login-form">
         <div class="input-group">
-          <input type="text" v-model="loginForm.username" placeholder="用户名" @keyup.enter="onLogin">
+          <input type="text" v-model="loginForm.username" placeholder="用户名" @keyup.enter="handleLogin">
         </div>
         <div class="input-group">
-          <input type="password" v-model="loginForm.password" placeholder="密码" @keyup.enter="onLogin">
+          <input type="password" v-model="loginForm.password" placeholder="密码" @keyup.enter="handleLogin">
         </div>
-        <button @click="onLogin" :disabled="isLock" class="btn-primary btn-full">
+        <button @click="handleLogin" :disabled="isLock" class="btn-primary btn-full">
           {{ isLock ? '请等待3秒...' : '进入工场' }}
         </button>
         <p v-if="loginError" class="error-text">{{ loginError }}</p>
@@ -23,12 +23,15 @@
 </template>
 
 <script setup>
-defineProps({
-  loginForm: Object,
-  isLock: Boolean,
-  loginError: String,
-  onLogin: Function
-})
+import { ref, inject } from 'vue'
+
+const { isLock, loginError, onLogin } = inject('appState')
+
+const loginForm = ref({ username: '', password: '' })
+
+const handleLogin = async () => {
+  await onLogin(loginForm.value.username, loginForm.value.password)
+}
 </script>
 
 <style scoped>

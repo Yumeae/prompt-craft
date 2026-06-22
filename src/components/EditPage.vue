@@ -2,7 +2,7 @@
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
-        <button @click="$emit('cancelEdit')" class="btn-ghost">← 返回</button>
+        <button @click="onCancelEdit" class="btn-ghost">← 返回</button>
       </div>
       <div class="nav-center">
         <span class="logo-text">编辑提示词</span>
@@ -43,8 +43,8 @@
         </div>
 
         <div class="form-actions">
-          <button @click="$emit('cancelEdit')" class="btn-ghost">取消</button>
-          <button @click="$emit('saveEdit')" :disabled="isLoading" class="btn-primary">
+          <button @click="onCancelEdit" class="btn-ghost">取消</button>
+          <button @click="onSaveEditHandler" :disabled="isLoading" class="btn-primary">
             {{ isLoading ? '保存中...' : '保存修改' }}
           </button>
         </div>
@@ -54,12 +54,12 @@
 </template>
 
 <script setup>
-defineProps({
-  editForm: Object,
-  isLoading: Boolean
-})
+import { inject } from 'vue'
 
-defineEmits(['cancelEdit', 'saveEdit'])
+const {
+  editForm, isLoading,
+  onSaveEditHandler, onCancelEdit
+} = inject('appState')
 
 const getCategoryIcon = (cat) => {
   const icons = {

@@ -2,7 +2,7 @@
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
-        <button @click="$emit('goBack')" class="btn-ghost">← 返回</button>
+        <button @click="onGoBack" class="btn-ghost">← 返回</button>
       </div>
       <div class="nav-center">
         <span class="logo-text">发布提示词</span>
@@ -50,7 +50,7 @@
           </p>
         </div>
 
-        <button @click="$emit('create')" :disabled="isLoading" class="btn-primary btn-full">
+        <button @click="onCreatePrompt" :disabled="isLoading" class="btn-primary btn-full">
           {{ isLoading ? '发布中...' : '立即发布' }}
         </button>
       </div>
@@ -59,15 +59,13 @@
 </template>
 
 <script setup>
-defineProps({
-  newPrompt: Object,
-  currentUser: Object,
-  isLoading: Boolean,
-  isTitleInvalid: Boolean,
-  isContentInvalid: Boolean
-})
+import { inject } from 'vue'
 
-defineEmits(['goBack', 'create'])
+const {
+  currentUser, isLoading, newPrompt,
+  isTitleInvalid, isContentInvalid,
+  onCreatePrompt, onGoBack
+} = inject('appState')
 
 const hideEmail = (email) => {
   if (!email) return ''

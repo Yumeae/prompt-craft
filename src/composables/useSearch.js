@@ -1,19 +1,20 @@
 import { ref, watch } from 'vue'
-import { usePrompts } from './usePrompts'
 
-export function useSearch() {
-  const { fetchPrompts, searchPrompts, getSuggestions } = usePrompts()
-
+export function useSearch({ fetchPrompts, searchPrompts, getSuggestions, activeCategory, onShowDetail }) {
   const searchText = ref('')
   const suggestions = ref([])
   const showSuggestions = ref(false)
+  let isSelecting = false
 
   let searchTimer = null
 
   watch(searchText, (newValue) => {
+    if (isSelecting) return
+
     clearTimeout(searchTimer)
     searchTimer = setTimeout(async () => {
       if (newValue.trim()) {
+        activeCategory.value = '全部'
         await searchPrompts(newValue)
         const result = await getSuggestions(newValue)
         suggestions.value = result
@@ -26,9 +27,19 @@ export function useSearch() {
     }, 300)
   })
 
-  const selectSuggestion = (suggestion) => {
-    searchText.value = suggestion
+  const selectSuggestion = (item) => {
+    isSelecting = true
     showSuggestions.value = false
+    searchText.value = ''
+    suggestions.value = []
+
+    if (onShowDetail && item.id) {
+      onShowDetail(item)
+    }
+
+    setTimeout(() => {
+      isSelecting = false
+    }, 100)
   }
 
   const hideSuggestions = () => {

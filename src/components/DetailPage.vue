@@ -2,7 +2,7 @@
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
-        <button @click="$emit('goBack')" class="btn-ghost">← 返回</button>
+        <button @click="onGoBack" class="btn-ghost">← 返回</button>
       </div>
       <div class="nav-center">
         <span class="logo-text">提示词详情</span>
@@ -10,7 +10,7 @@
       <div class="nav-right"></div>
     </header>
 
-    <div class="detail-page">
+    <div class="detail-page" v-if="currentPrompt">
       <div class="detail-card">
         <div class="detail-header">
           <span class="detail-category">{{ currentPrompt.category }}</span>
@@ -27,7 +27,7 @@
           <div class="detail-content">
             <pre>{{ currentPrompt.content }}</pre>
           </div>
-          <button @click="$emit('copyContent', currentPrompt.content)" class="btn-primary">一键复制</button>
+          <button @click="copyToClipboard(currentPrompt.content)" class="btn-primary">一键复制</button>
         </div>
 
         <div v-if="currentPrompt.tags" class="detail-tags">
@@ -38,7 +38,7 @@
         </div>
 
         <div class="detail-actions">
-          <button @click="$emit('like', currentPrompt.id)" :class="['btn-like', { liked: isLiked }]">
+          <button @click="onLike(currentPrompt.id)" :class="['btn-like', { liked: isLiked }]">
             <svg v-if="isLiked" class="like-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"></path>
             </svg>
@@ -49,14 +49,14 @@
           </button>
           <button
             v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
-            @click="$emit('startEdit', currentPrompt)"
+            @click="onStartEdit(currentPrompt)"
             class="btn-ghost"
           >
             编辑
           </button>
           <button
             v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
-            @click="$emit('delete', currentPrompt.id)"
+            @click="onDelete(currentPrompt.id)"
             class="btn-danger"
           >
             删除
@@ -68,13 +68,40 @@
 </template>
 
 <script setup>
-defineProps({
-  currentPrompt: Object,
-  currentUser: Object,
-  isLiked: Boolean
-})
+import { inject, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
 
-defineEmits(['goBack', 'copyContent', 'like', 'startEdit', 'delete'])
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
+
+const {
+  currentPrompt, currentUser, isLiked, promptList,
+  onGoBack, copyToClipboard, onLike, onStartEdit, onDelete, getLikeStatus
+} = inject('appState')
+
+const route = useRoute()
+
+onMounted(async () => {
+  const id = Number(route.params.id)
+  // 如果 currentPrompt 为空（直接访问 URL），从 promptList 或 API 获取
+  if (!currentPrompt.value || currentPrompt.value.id !== id) {
+    const found = promptList.value.find(p => p.id === id)
+    if (found) {
+      currentPrompt.value = found
+    } else {
+      try {
+        const res = await axios.get(`${API_BASE}/api/prompts/${id}`)
+        currentPrompt.value = res.data
+      } catch (err) {
+        console.error('获取提示词失败:', err)
+      }
+    }
+  }
+  // 初始化点赞状态
+  if (currentUser.value && currentPrompt.value) {
+    isLiked.value = await getLikeStatus(id)
+  }
+})
 
 const hideEmail = (email) => {
   if (!email) return ''

@@ -130,6 +130,39 @@ app.get('/api/prompts', (req, res) => {
   });
 });
 
+// 获取用户发布的提示词 - 需要 JWT 认证（必须在 :id 路由之前）
+app.get('/api/prompts/mine', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  db.all(`SELECT * FROM prompts WHERE author_id = ? ORDER BY created_at DESC`,
+    [userId],
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json(rows);
+    }
+  );
+});
+
+// 获取用户点赞的所有提示词 - 需要 JWT 认证（必须在 :id 路由之前）
+app.get('/api/prompts/liked', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  db.all(`SELECT p.* FROM prompts p
+          INNER JOIN user_likes ul ON p.id = ul.prompt_id
+          WHERE ul.user_id = ?
+          ORDER BY ul.created_at DESC`,
+    [userId],
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json(rows);
+    }
+  );
+});
+
 // 获取单个提示词
 app.get('/api/prompts/:id', (req, res) => {
   db.get(`SELECT * FROM prompts WHERE id = ?`, [req.params.id], (err, row) => {
@@ -158,18 +191,27 @@ app.get('/api/search', (req, res) => {
 // 发布新提示词 - 需要 JWT 认证
 app.post('/api/prompts', authenticateToken, (req, res) => {
   const { title, content, category, tags } = req.body;
-  const { id: author_id, username: author_name, email: author_email } = req.user;
+  const { id: author_id, username: author_name } = req.user;
 
-  db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [title, content, category, tags, author_id, author_name, author_email],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ id: this.lastID, message: '发布成功' });
+  // 从数据库获取真实邮箱（JWT 中的邮箱是脱敏的）
+  db.get(`SELECT email FROM users WHERE id = ?`, [author_id], (err, user) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
     }
-  );
+    const author_email = user ? user.email : '';
+
+    db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [title, content, category, tags, author_id, author_name, author_email],
+      function(err) {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
+        }
+        res.json({ id: this.lastID, message: '发布成功' });
+      }
+    );
+  });
 });
 
 // 点赞/取消点赞 - 需要 JWT 认证
@@ -230,41 +272,6 @@ app.get('/api/prompts/:id/like-status', authenticateToken, (req, res) => {
         return;
       }
       res.json({ liked: !!row });
-    }
-  );
-});
-
-// 获取用户点赞的所有提示词 - 需要 JWT 认证
-app.get('/api/prompts/liked', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-
-  db.all(`SELECT p.* FROM prompts p
-          INNER JOIN user_likes ul ON p.id = ul.prompt_id
-          WHERE ul.user_id = ?
-          ORDER BY ul.created_at DESC`,
-    [userId],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
-    }
-  );
-});
-
-// 获取用户发布的提示词 - 需要 JWT 认证
-app.get('/api/prompts/mine', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-
-  db.all(`SELECT * FROM prompts WHERE author_id = ? ORDER BY created_at DESC`,
-    [userId],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
     }
   );
 });
@@ -331,21 +338,21 @@ app.delete('/api/prompts/:id', authenticateToken, (req, res) => {
   });
 });
 
-// 搜索联想 - 返回匹配的标题
+// 搜索联想 - 返回匹配的标题和 id
 app.get('/api/suggestions', (req, res) => {
   const q = req.query.q;
   if (!q || q.trim().length === 0) {
     return res.json([]);
   }
 
-  db.all(`SELECT DISTINCT title FROM prompts WHERE title LIKE ? LIMIT 5`,
+  db.all(`SELECT id, title FROM prompts WHERE title LIKE ? LIMIT 5`,
     [`%${q}%`],
     (err, rows) => {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
       }
-      res.json(rows.map(r => r.title));
+      res.json(rows);
     }
   );
 });

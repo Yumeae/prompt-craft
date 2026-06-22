@@ -1,73 +1,72 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuth } from './composables/useAuth'
 import { usePrompts } from './composables/usePrompts'
 import { useModal } from './composables/useModal'
 import { usePageLoading } from './composables/usePageLoading'
+import { useSearch } from './composables/useSearch'
+import { useEdit } from './composables/useEdit'
+import { useClipboard } from './composables/useClipboard'
 import PageLoading from './components/PageLoading.vue'
 import Modal from './components/Modal.vue'
-import LoginPage from './components/LoginPage.vue'
-import HomePage from './components/HomePage.vue'
-import CreatePage from './components/CreatePage.vue'
-import EditPage from './components/EditPage.vue'
-import DetailPage from './components/DetailPage.vue'
-import ProfilePage from './components/ProfilePage.vue'
 
-const { currentUser, isLock, loginError, handleLogin, handleLogout, checkAuth } = useAuth()
-const { promptList, isLoading, stats, fetchPrompts, searchPrompts, createPrompt, likePrompt, deletePrompt, updatePrompt, getLikeStatus, fetchMyPrompts, fetchLikedPrompts, getSuggestions } = usePrompts()
+const router = useRouter()
+const { currentUser, isLock, loginError, handleLogin, handleLogout } = useAuth()
+const {
+  promptList, isLoading, stats,
+  fetchPrompts, searchPrompts, createPrompt, likePrompt, deletePrompt,
+  getLikeStatus, fetchMyPrompts, fetchLikedPrompts, getSuggestions
+} = usePrompts()
 const { modal, showAlert, showConfirm, handleModalOk, handleModalCancel } = useModal()
 const { isPageLoading, hidePageLoading } = usePageLoading()
+const { editPrompt, editForm, startEdit, onSaveEdit, cancelEdit } = useEdit()
+const { copyToClipboard } = useClipboard()
 
-const currentPage = ref('home')
-const loginForm = ref({ username: '', password: '' })
 const newPrompt = ref({ title: '', category: '写作', content: '', tags: '', contact: '' })
 const activeCategory = ref('全部')
 const currentPrompt = ref(null)
 const isLiked = ref(false)
-const searchText = ref('')
-const suggestions = ref([])
-const showSuggestions = ref(false)
+const likedPromptIds = ref([])
 
-const editPrompt = ref(null)
-const editForm = ref({ title: '', category: '写作', content: '', tags: '' })
+const onShowDetail = async (item) => {
+  const fullItem = promptList.value.find(p => p.id === item.id) || item
+  currentPrompt.value = fullItem
+  router.push(`/detail/${item.id}`)
+  isLiked.value = currentUser.value ? await getLikeStatus(item.id) : false
+}
+
+const { searchText, suggestions, showSuggestions, selectSuggestion, hideSuggestions } = useSearch({
+  fetchPrompts, searchPrompts, getSuggestions, activeCategory, onShowDetail
+})
 
 const categories = ['全部', '写作', '编程', '绘画', '翻译', '其他']
 const userCategories = ['我发布的', '我喜欢的']
 
-const isTitleInvalid = computed(() => newPrompt.value.title.length > 0 && newPrompt.value.title.length < 3)
-const isContentInvalid = computed(() => newPrompt.value.content.length > 0 && newPrompt.value.content.length < 10)
+const requireAuth = () => {
+  if (!currentUser.value) {
+    router.push('/login')
+    return false
+  }
+  return true
+}
 
-onMounted(async () => {
-  await fetchPrompts()
-  hidePageLoading()
+const isTitleInvalid = computed(() => {
+  return newPrompt.value.title.length > 0 && newPrompt.value.title.length < 3
 })
 
-const onLogin = async () => {
-  const success = await handleLogin(loginForm.value.username, loginForm.value.password)
-  if (success) {
-    currentPage.value = 'home'
-    fetchPrompts()
-  }
-}
-
-const onLogout = () => {
-  handleLogout()
-  loginForm.value = { username: '', password: '' }
-}
-
-const filterCategory = async (cat) => {
-  activeCategory.value = cat
-  if (cat === '我发布的') {
-    await fetchMyPrompts()
-  } else if (cat === '我喜欢的') {
-    await fetchLikedPrompts()
-  } else {
-    await fetchPrompts()
-  }
-}
+const isContentInvalid = computed(() => {
+  return newPrompt.value.content.length > 0 && newPrompt.value.content.length < 10
+})
 
 const filteredPrompts = computed(() => {
-  if (activeCategory.value === '全部' || activeCategory.value === '我发布的' || activeCategory.value === '我喜欢的') {
+  if (activeCategory.value === '我发布的' && currentUser.value) {
+    return promptList.value.filter(p => p.author_id === currentUser.value.id)
+  }
+  if (activeCategory.value === '我喜欢的') {
+    return likedPromptIds.value.map(id => promptList.value.find(p => p.id === id)).filter(Boolean)
+  }
+  if (activeCategory.value === '全部') {
     return promptList.value
   }
   return promptList.value.filter(p => p.category === activeCategory.value)
@@ -78,54 +77,43 @@ const myPrompts = computed(() => {
   return promptList.value.filter(p => p.author_id === currentUser.value.id)
 })
 
-let searchTimer = null
-watch(searchText, (newValue) => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(async () => {
-    if (newValue.trim()) {
-      await searchPrompts(newValue)
-      const result = await getSuggestions(newValue)
-      suggestions.value = result
-      showSuggestions.value = result.length > 0
-    } else {
-      await fetchPrompts()
-      suggestions.value = []
-      showSuggestions.value = false
-    }
-  }, 300)
+onMounted(async () => {
+  await fetchPrompts()
+  hidePageLoading()
 })
 
-const selectSuggestion = (suggestion) => {
-  searchText.value = suggestion
-  showSuggestions.value = false
-}
-
-const hideSuggestions = () => {
-  setTimeout(() => {
-    showSuggestions.value = false
-  }, 200)
-}
-
-const showDetail = async (item) => {
-  currentPrompt.value = item
-  currentPage.value = 'detail'
-  if (currentUser.value) {
-    isLiked.value = await getLikeStatus(item.id)
-  } else {
-    isLiked.value = false
+const onLogin = async (username, password) => {
+  const success = await handleLogin(username, password)
+  if (success) {
+    router.push('/')
+    fetchPrompts()
   }
 }
 
-const goBack = () => {
-  currentPage.value = 'home'
+const onLogout = () => {
+  handleLogout()
+  router.push('/')
+}
+
+const onFilterCategory = async (cat) => {
+  activeCategory.value = cat
+  if (cat === '我发布的') {
+    await fetchMyPrompts()
+  } else if (cat === '我喜欢的') {
+    const liked = await fetchLikedPrompts()
+    if (liked) likedPromptIds.value = liked.map(p => p.id)
+  } else {
+    await fetchPrompts()
+  }
+}
+
+const onGoBack = () => {
   currentPrompt.value = null
+  router.back()
 }
 
 const onCreatePrompt = async () => {
-  if (!currentUser.value) {
-    currentPage.value = 'login'
-    return
-  }
+  if (!requireAuth()) return
   if (!newPrompt.value.title.trim() || !newPrompt.value.content.trim()) {
     await showAlert('请填写完整信息', '提示', 'warning')
     return
@@ -146,158 +134,99 @@ const onCreatePrompt = async () => {
   if (success) {
     await showAlert('发布成功！', '成功', 'success')
     newPrompt.value = { title: '', category: '写作', content: '', tags: '', contact: '' }
-    currentPage.value = 'home'
+    router.push('/')
   }
 }
 
 const onLike = async (id) => {
-  if (!currentUser.value) {
-    currentPage.value = 'login'
-    return
-  }
+  if (!requireAuth()) return
   const liked = await likePrompt(id)
   if (liked !== null) {
     isLiked.value = liked
+    // 同步更新点赞 ID 列表
+    if (liked) {
+      if (!likedPromptIds.value.includes(id)) {
+        likedPromptIds.value = [...likedPromptIds.value, id]
+      }
+    } else {
+      likedPromptIds.value = likedPromptIds.value.filter(i => i !== id)
+    }
   }
-  if (currentPrompt.value && currentPrompt.value.id === id) {
-    const updated = promptList.value.find(p => p.id === id)
-    if (updated) currentPrompt.value = updated
+  if (currentPrompt.value?.id === id) {
+    currentPrompt.value = promptList.value.find(p => p.id === id) || currentPrompt.value
   }
 }
 
 const onDelete = async (id) => {
   const confirmed = await showConfirm('确定要删除这条提示词吗？此操作不可撤销。', '警告', 'error')
   if (!confirmed) return
+
   const success = await deletePrompt(id)
   if (success) {
     await showAlert('删除成功', '成功', 'success')
-    currentPage.value = 'home'
     currentPrompt.value = null
+    router.push('/')
   }
 }
 
-const startEdit = (prompt) => {
-  editPrompt.value = prompt
-  editForm.value = {
-    title: prompt.title,
-    category: prompt.category,
-    content: prompt.content,
-    tags: prompt.tags || ''
-  }
-  currentPage.value = 'edit'
+const onStartEdit = (prompt) => {
+  startEdit(prompt, (page) => router.push(`/${page}`))
 }
 
-const onSaveEdit = async () => {
-  if (!editForm.value.title.trim() || !editForm.value.content.trim()) {
-    await showAlert('请填写完整信息', '提示', 'warning')
-    return
-  }
-  const confirmed = await showConfirm('确定保存修改吗？')
-  if (!confirmed) return
-
-  const success = await updatePrompt(editPrompt.value.id, editForm.value)
-  if (success) {
-    await showAlert('更新成功！', '成功', 'success')
-    editPrompt.value = null
-    currentPage.value = 'home'
-    await fetchPrompts()
-  }
+const onSaveEditHandler = async () => {
+  await onSaveEdit((page) => router.push(`/${page}`))
 }
 
-const cancelEdit = () => {
-  editPrompt.value = null
-  currentPage.value = 'home'
+const onCancelEdit = () => {
+  cancelEdit((page) => router.push(`/${page}`))
 }
 
-const copyContent = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    await showAlert('已复制到剪贴板！', '成功', 'success')
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    await showAlert('已复制到剪贴板！', '成功', 'success')
-  }
-}
+provide('appState', {
+  currentUser,
+  isLoading,
+  stats,
+  promptList,
+  searchText,
+  suggestions,
+  showSuggestions,
+  filteredPrompts,
+  categories,
+  userCategories,
+  activeCategory,
+  newPrompt,
+  editPrompt,
+  editForm,
+  currentPrompt,
+  isLiked,
+  myPrompts,
+  isTitleInvalid,
+  isContentInvalid,
+  isLock,
+  loginError,
+  fetchMyPrompts,
+  getLikeStatus,
+  onLogin,
+  onLogout,
+  onFilterCategory,
+  onShowDetail,
+  onGoBack,
+  onCreatePrompt,
+  onLike,
+  onDelete,
+  onStartEdit,
+  onSaveEditHandler,
+  onCancelEdit,
+  copyToClipboard,
+  selectSuggestion,
+  hideSuggestions,
+  onUpdateSearchText: (val) => { searchText.value = val },
+  onShowSuggestions: () => { showSuggestions.value = suggestions.value.length > 0 }
+})
 </script>
 
 <template>
   <PageLoading :visible="isPageLoading" />
-
-  <LoginPage
-    v-if="currentPage === 'login'"
-    :loginForm="loginForm"
-    :isLock="isLock"
-    :loginError="loginError"
-    :onLogin="onLogin"
-  />
-
-  <HomePage
-    v-else-if="currentPage === 'home'"
-    :currentUser="currentUser"
-    :stats="stats"
-    :searchText="searchText"
-    :suggestions="suggestions"
-    :showSuggestions="showSuggestions"
-    :isLoading="isLoading"
-    :filteredPrompts="filteredPrompts"
-    :categories="categories"
-    :userCategories="userCategories"
-    :activeCategory="activeCategory"
-    @navigate="(page) => currentPage = page"
-    @logout="onLogout"
-    @update:searchText="(val) => searchText = val"
-    @showSuggestions="showSuggestions = suggestions.length > 0"
-    @hideSuggestions="hideSuggestions"
-    @selectSuggestion="selectSuggestion"
-    @filterCategory="filterCategory"
-    @showDetail="showDetail"
-  />
-
-  <CreatePage
-    v-else-if="currentPage === 'create'"
-    :newPrompt="newPrompt"
-    :currentUser="currentUser"
-    :isLoading="isLoading"
-    :isTitleInvalid="isTitleInvalid"
-    :isContentInvalid="isContentInvalid"
-    @goBack="goBack"
-    @create="onCreatePrompt"
-  />
-
-  <EditPage
-    v-else-if="currentPage === 'edit' && editPrompt"
-    :editForm="editForm"
-    :isLoading="isLoading"
-    @cancelEdit="cancelEdit"
-    @saveEdit="onSaveEdit"
-  />
-
-  <DetailPage
-    v-else-if="currentPage === 'detail' && currentPrompt"
-    :currentPrompt="currentPrompt"
-    :currentUser="currentUser"
-    :isLiked="isLiked"
-    @goBack="goBack"
-    @copyContent="copyContent"
-    @like="onLike"
-    @startEdit="startEdit"
-    @delete="onDelete"
-  />
-
-  <ProfilePage
-    v-else-if="currentPage === 'profile' && currentUser"
-    :currentUser="currentUser"
-    :myPrompts="myPrompts"
-    @goBack="goBack"
-    @navigate="(page) => currentPage = page"
-    @showDetail="showDetail"
-  />
-
+  <router-view />
   <Modal
     :modal="modal"
     :handleOk="handleModalOk"

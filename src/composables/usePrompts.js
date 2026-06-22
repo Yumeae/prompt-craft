@@ -63,7 +63,17 @@ export function usePrompts() {
       const res = await axios.put(`${API_BASE}/api/prompts/${id}/like`, null, {
         headers: getAuthHeaders()
       })
-      await fetchPrompts()
+      // 直接更新 promptList 中对应提示词的点赞数
+      const idx = promptList.value.findIndex(p => p.id === id)
+      if (idx !== -1) {
+        const updated = { ...promptList.value[idx] }
+        updated.likes = updated.likes + (res.data.liked ? 1 : -1)
+        promptList.value = [
+          ...promptList.value.slice(0, idx),
+          updated,
+          ...promptList.value.slice(idx + 1)
+        ]
+      }
       return res.data.liked
     } catch (err) {
       console.error('点赞失败:', err)
@@ -106,8 +116,10 @@ export function usePrompts() {
         headers: getAuthHeaders()
       })
       promptList.value = res.data
+      return res.data
     } catch (err) {
       console.error('获取点赞提示词失败:', err)
+      return null
     } finally {
       isLoading.value = false
     }
@@ -162,10 +174,12 @@ export function usePrompts() {
   const stats = computed(() => {
     const total = promptList.value.length
     const categories = {}
+    const categoryLikes = {}
     promptList.value.forEach(p => {
       categories[p.category] = (categories[p.category] || 0) + 1
+      categoryLikes[p.category] = (categoryLikes[p.category] || 0) + (p.likes || 0)
     })
-    const topCategory = Object.entries(categories).sort((a, b) => b[1] - a[1])[0]
+    const topCategory = Object.entries(categoryLikes).sort((a, b) => b[1] - a[1])[0]
     return {
       total,
       categories,

@@ -1,6 +1,5 @@
 <template>
   <div class="app-layout">
-    <!-- 顶部导航 -->
     <header class="top-nav">
       <div class="nav-left">
         <span class="logo-text">PromptCraft</span>
@@ -8,17 +7,16 @@
       <div class="nav-right">
         <template v-if="currentUser">
           <span class="user-name">{{ currentUser.username }}</span>
-          <button @click="$emit('navigate', 'create')" class="btn-primary btn-sm">+ 发布</button>
-          <button @click="$emit('navigate', 'profile')" class="btn-ghost btn-sm">个人中心</button>
+          <button @click="$router.push('/create')" class="btn-primary btn-sm">+ 发布</button>
+          <button @click="$router.push('/profile')" class="btn-ghost btn-sm">个人中心</button>
           <button @click="onLogout" class="btn-ghost btn-sm">退出</button>
         </template>
         <template v-else>
-          <button @click="$emit('navigate', 'login')" class="btn-primary btn-sm">登录</button>
+          <button @click="$router.push('/login')" class="btn-primary btn-sm">登录</button>
         </template>
       </div>
     </header>
 
-    <!-- Hero 区域 -->
     <section class="hero-section">
       <h2 class="hero-title">AI 时代，提示词是新的"代码"</h2>
       <p class="hero-subtitle">探索、分享、收藏让 AI 更好为你服务的提示词</p>
@@ -30,26 +28,25 @@
         <input
           type="text"
           :value="searchText"
-          @input="$emit('update:searchText', $event.target.value)"
+          @input="onUpdateSearchText($event.target.value)"
           placeholder="搜索提示词..."
           class="search-input"
-          @focus="$emit('showSuggestions')"
-          @blur="$emit('hideSuggestions')"
+          @focus="onShowSuggestions"
+          @blur="hideSuggestions"
         >
         <div v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
           <div
             v-for="item in suggestions"
-            :key="item"
+            :key="item.id"
             class="suggestion-item"
-            @mousedown.prevent="$emit('selectSuggestion', item)"
+            @mousedown.prevent="selectSuggestion(item)"
           >
-            {{ item }}
+            {{ item.title }}
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 统计条 -->
     <div class="stats-row">
       <div class="stat-chip">
         <span class="stat-num">{{ stats.total }}</span>
@@ -65,16 +62,14 @@
       </div>
     </div>
 
-    <!-- 主内容区 -->
     <div class="main-content">
-      <!-- 左侧分类栏 -->
       <aside class="sidebar">
         <div class="sidebar-title">分类</div>
         <div
           v-for="cat in categories"
           :key="cat"
           :class="['sidebar-item', { active: activeCategory === cat }]"
-          @click="$emit('filterCategory', cat)"
+          @click="onFilterCategory(cat)"
         >
           <svg class="sidebar-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path :d="getCategoryIcon(cat)"></path>
@@ -89,7 +84,7 @@
             v-for="cat in userCategories"
             :key="cat"
             :class="['sidebar-item', { active: activeCategory === cat }]"
-            @click="$emit('filterCategory', cat)"
+            @click="onFilterCategory(cat)"
           >
             <svg class="sidebar-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path v-if="cat === '我发布的'" d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"></path>
@@ -100,7 +95,6 @@
         </template>
       </aside>
 
-      <!-- 右侧卡片网格 -->
       <main class="content-area">
         <div v-if="isLoading" class="loading-state">
           <div class="loading-spinner"></div>
@@ -112,7 +106,7 @@
             v-for="item in filteredPrompts"
             :key="item.id"
             class="prompt-card"
-            @click="$emit('showDetail', item)"
+            @click="onShowDetail(item)"
           >
             <div class="card-category">{{ item.category }}</div>
             <h3 class="card-title">{{ item.title }}</h3>
@@ -129,8 +123,8 @@
 
         <div v-if="!isLoading && filteredPrompts.length === 0" class="empty-state">
           <p>暂无提示词</p>
-          <button v-if="currentUser" @click="$emit('navigate', 'create')" class="btn-primary">发布第一条</button>
-          <button v-else @click="$emit('navigate', 'login')" class="btn-primary">登录后发布</button>
+          <button v-if="currentUser" @click="$router.push('/create')" class="btn-primary">发布第一条</button>
+          <button v-else @click="$router.push('/login')" class="btn-primary">登录后发布</button>
         </div>
       </main>
     </div>
@@ -138,33 +132,14 @@
 </template>
 
 <script setup>
-defineProps({
-  currentUser: Object,
-  stats: Object,
-  searchText: String,
-  suggestions: Array,
-  showSuggestions: Boolean,
-  isLoading: Boolean,
-  filteredPrompts: Array,
-  categories: Array,
-  userCategories: Array,
-  activeCategory: String
-})
+import { inject } from 'vue'
 
-defineEmits([
-  'navigate',
-  'logout',
-  'update:searchText',
-  'showSuggestions',
-  'hideSuggestions',
-  'selectSuggestion',
-  'filterCategory',
-  'showDetail'
-])
-
-const onLogout = () => {
-  emit('logout')
-}
+const {
+  currentUser, isLoading, stats, searchText, suggestions, showSuggestions,
+  filteredPrompts, categories, userCategories, activeCategory,
+  onLogout, onFilterCategory, onShowDetail, selectSuggestion, hideSuggestions,
+  onUpdateSearchText, onShowSuggestions
+} = inject('appState')
 
 const hideEmail = (email) => {
   if (!email) return ''

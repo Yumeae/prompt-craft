@@ -2,7 +2,7 @@
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
-        <button @click="$emit('goBack')" class="btn-ghost">← 返回</button>
+        <button @click="onGoBack" class="btn-ghost">← 返回</button>
       </div>
       <div class="nav-center">
         <span class="logo-text">个人中心</span>
@@ -20,27 +20,42 @@
           </div>
           <div class="info-item">
             <span class="info-label">邮箱</span>
-            <span class="info-value">{{ hideEmail(currentUser.email) }}</span>
+            <div class="info-value-row">
+              <button @click="showEmail = !showEmail" class="btn-toggle" :title="showEmail ? '隐藏邮箱' : '显示邮箱'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <template v-if="showEmail">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </template>
+                  <template v-else>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="4" y1="4" x2="20" y2="20" stroke-width="2.5"></line>
+                  </template>
+                </svg>
+              </button>
+              <span class="info-value">{{ showEmail ? currentUser.email : hideEmail(currentUser.email) }}</span>
+            </div>
           </div>
           <div class="info-item">
             <span class="info-label">发布数量</span>
-            <span class="info-value">{{ myPrompts.length }} 条</span>
+            <span class="info-value">{{ promptList.length }} 条</span>
           </div>
         </div>
       </div>
 
       <div class="profile-card">
         <h2 class="profile-title">我的提示词</h2>
-        <div v-if="myPrompts.length === 0" class="empty-state">
+        <div v-if="promptList.length === 0" class="empty-state">
           <p>你还没有发布过提示词</p>
-          <button @click="$emit('navigate', 'create')" class="btn-primary">立即发布</button>
+          <button @click="$router.push('/create')" class="btn-primary">立即发布</button>
         </div>
         <div v-else class="my-prompts-list">
           <div
-            v-for="item in myPrompts"
+            v-for="item in promptList"
             :key="item.id"
             class="my-prompt-item"
-            @click="$emit('showDetail', item)"
+            @click="onShowDetail(item)"
           >
             <div class="my-prompt-header">
               <span class="card-category">{{ item.category }}</span>
@@ -56,12 +71,15 @@
 </template>
 
 <script setup>
-defineProps({
-  currentUser: Object,
-  myPrompts: Array
-})
+import { ref, inject, onMounted } from 'vue'
 
-defineEmits(['goBack', 'navigate', 'showDetail'])
+const { currentUser, promptList, onGoBack, onShowDetail, fetchMyPrompts } = inject('appState')
+
+const showEmail = ref(false)
+
+onMounted(() => {
+  fetchMyPrompts()
+})
 
 const hideEmail = (email) => {
   if (!email) return ''
@@ -148,6 +166,27 @@ const hideEmail = (email) => {
   font-size: 14px;
   color: #1A1A1A;
   font-weight: 500;
+}
+
+.info-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-toggle {
+  padding: 4px 8px;
+  background: transparent;
+  color: #1A1A1A;
+  border: 1px solid #E5E5E5;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle:hover {
+  background: #F5F5F5;
 }
 
 .empty-state {
