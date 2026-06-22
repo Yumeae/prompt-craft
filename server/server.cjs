@@ -16,6 +16,13 @@ const hideEmail = (email) => {
   return email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
 };
 
+// 提示词数据脱敏：隐藏作者邮箱
+const maskPrompt = (p) => {
+  if (!p) return p;
+  return { ...p, author_email: hideEmail(p.author_email) };
+};
+const maskPrompts = (list) => list.map(maskPrompt);
+
 // JWT 验证中间件
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -132,7 +139,7 @@ app.post('/api/login', (req, res) => {
 // 获取所有提示词
 app.get('/api/prompts', (req, res) => {
   try {
-    res.json(stmts.getAllPrompts.all());
+    res.json(maskPrompts(stmts.getAllPrompts.all()));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -141,7 +148,7 @@ app.get('/api/prompts', (req, res) => {
 // 获取用户发布的提示词 - 需要 JWT 认证（必须在 :id 路由之前）
 app.get('/api/prompts/mine', authenticateToken, (req, res) => {
   try {
-    res.json(stmts.getPromptsByAuthor.all(req.user.id));
+    res.json(maskPrompts(stmts.getPromptsByAuthor.all(req.user.id)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -150,7 +157,7 @@ app.get('/api/prompts/mine', authenticateToken, (req, res) => {
 // 获取用户点赞的所有提示词 - 需要 JWT 认证（必须在 :id 路由之前）
 app.get('/api/prompts/liked', authenticateToken, (req, res) => {
   try {
-    res.json(stmts.getLikedPrompts.all(req.user.id));
+    res.json(maskPrompts(stmts.getLikedPrompts.all(req.user.id)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -160,7 +167,7 @@ app.get('/api/prompts/liked', authenticateToken, (req, res) => {
 app.get('/api/prompts/:id', (req, res) => {
   try {
     const row = stmts.getPromptById.get(req.params.id);
-    res.json(row);
+    res.json(maskPrompt(row));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -172,7 +179,7 @@ app.get('/api/search', (req, res) => {
   // 故意使用字符串拼接，存在 SQL 注入漏洞
   const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%' OR content LIKE '%${q}%' OR tags LIKE '%${q}%'`;
   try {
-    res.json(db.prepare(sql).all());
+    res.json(maskPrompts(db.prepare(sql).all()));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
