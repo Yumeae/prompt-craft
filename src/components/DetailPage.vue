@@ -50,7 +50,7 @@
           <button
             v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
             @click="onStartEdit(currentPrompt)"
-            class="btn-ghost"
+            class="btn-edit"
           >
             编辑
           </button>
@@ -273,6 +273,22 @@ const hideEmail = (email) => {
 
 .btn-ghost:hover {
   color: #1A1A1A;
+}
+
+.btn-edit {
+  padding: 8px 16px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit:hover {
+  color: #1A1A1A;
+  border-color: #999;
 }
 
 .btn-like {
