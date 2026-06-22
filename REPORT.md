@@ -12,7 +12,7 @@ PromptCraft 是一个 AI 提示词共享平台，让用户可以分享、发现�
 - **实现方式：** 使用正则表达式对用户邮箱和手机号进行脱敏处理
 - **代码位置：** `src/App.vue` - `hideEmail()` 和 `hidePhone()` 函数
 - **效果示例：**
-  - 邮箱：`admin@example.com` → `a***@example.com`
+  - 邮箱：`admin@promptcraft.com` → `a***@promptcraft.com`
   - 手机号：`13812345678` → `138****5678`
 - **安全意义：** 防止用户隐私信息在前端页面被完整暴露
 

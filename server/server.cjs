@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const app = express();
@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const db = new sqlite3.Database(':memory:');
+const db = new Database(':memory:');
 const JWT_SECRET = 'promptcraft_jwt_secret_2026_secure_key';
 
 // 邮箱脱敏函数
@@ -35,16 +35,16 @@ const authenticateToken = (req, res, next) => {
 };
 
 // 初始化表结构和测试数据
-db.serialize(() => {
-  db.run(`CREATE TABLE users (
+db.exec(`
+  CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     password TEXT,
     email TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  );
 
-  db.run(`CREATE TABLE prompts (
+  CREATE TABLE prompts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
     content TEXT,
@@ -56,10 +56,9 @@ db.serialize(() => {
     likes INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES users(id)
-  )`);
+  );
 
-  // 点赞记录表
-  db.run(`CREATE TABLE user_likes (
+  CREATE TABLE user_likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     prompt_id INTEGER,
@@ -67,111 +66,104 @@ db.serialize(() => {
     UNIQUE(user_id, prompt_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (prompt_id) REFERENCES prompts(id)
-  )`);
+  );
+`);
 
-  // 插入测试用户
-  db.run(`INSERT INTO users (username, password, email) VALUES ('admin', '123456', 'admin@promptcraft.com')`);
-  db.run(`INSERT INTO users (username, password, email) VALUES ('user1', '123456', 'user1@promptcraft.com')`);
+// 插入测试用户
+const insertUser = db.prepare(`INSERT INTO users (username, password, email) VALUES (?, ?, ?)`);
+insertUser.run('admin', '123456', 'admin@promptcraft.com');
+insertUser.run('user1', '123456', 'user1@promptcraft.com');
 
-  // 插入测试提示词
-  db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email, likes) VALUES
-    ('高效写作助手', '你是一位专业的写作助手，请帮我润色以下文字，使其更加流畅、专业，同时保持原意。', '写作', '写作,润色,助手', 1, 'admin', 'admin@promptcraft.com', 15)`);
-  db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email, likes) VALUES
-    ('代码审查专家', '你是一位资深的代码审查专家，请仔细审查以下代码，找出潜在的bug、安全漏洞和性能问题，并给出改进建议。', '编程', '代码,审查,安全', 1, 'admin', 'admin@promptcraft.com', 23)`);
-  db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email, likes) VALUES
-    ('Midjourney提示词生成器', '请根据我描述的场景，生成一段适合Midjourney的英文提示词，包含风格、光线、构图等细节描述。', '绘画', 'AI绘画,Midjourney,提示词', 2, 'user1', 'user1@promptcraft.com', 42)`);
-  db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email, likes) VALUES
-    ('学术论文翻译', '你是一位学术翻译专家，请将以下中文翻译成英文，保持学术用语的准确性和专业性。', '翻译', '翻译,学术,论文', 2, 'user1', 'user1@promptcraft.com', 8)`);
-});
+// 插入测试提示词
+const insertPrompt = db.prepare(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email, likes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+insertPrompt.run('高效写作助手', '你是一位专业的写作助手，请帮我润色以下文字，使其更加流畅、专业，同时保持原意。', '写作', '写作,润色,助手', 1, 'admin', 'admin@promptcraft.com', 15);
+insertPrompt.run('代码审查专家', '你是一位资深的代码审查专家，请仔细审查以下代码，找出潜在的bug、安全漏洞和性能问题，并给出改进建议。', '编程', '代码,审查,安全', 1, 'admin', 'admin@promptcraft.com', 23);
+insertPrompt.run('Midjourney提示词生成器', '请根据我描述的场景，生成一段适合Midjourney的英文提示词，包含风格、光线、构图等细节描述。', '绘画', 'AI绘画,Midjourney,提示词', 2, 'user1', 'user1@promptcraft.com', 42);
+insertPrompt.run('学术论文翻译', '你是一位学术翻译专家，请将以下中文翻译成英文，保持学术用语的准确性和专业性。', '翻译', '翻译,学术,论文', 2, 'user1', 'user1@promptcraft.com', 8);
+
+// 预编译 SQL 语句
+const stmts = {
+  findUser: db.prepare(`SELECT id, username, email FROM users WHERE username = ? AND password = ?`),
+  getUserEmail: db.prepare(`SELECT email FROM users WHERE id = ?`),
+  getAllPrompts: db.prepare(`SELECT * FROM prompts ORDER BY created_at DESC`),
+  getPromptById: db.prepare(`SELECT * FROM prompts WHERE id = ?`),
+  getPromptsByAuthor: db.prepare(`SELECT * FROM prompts WHERE author_id = ? ORDER BY created_at DESC`),
+  getLikedPrompts: db.prepare(`SELECT p.* FROM prompts p INNER JOIN user_likes ul ON p.id = ul.prompt_id WHERE ul.user_id = ? ORDER BY ul.created_at DESC`),
+  insertPrompt: db.prepare(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email) VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  updatePrompt: db.prepare(`UPDATE prompts SET title = ?, content = ?, category = ?, tags = ? WHERE id = ?`),
+  deletePrompt: db.prepare(`DELETE FROM prompts WHERE id = ?`),
+  findLike: db.prepare(`SELECT id FROM user_likes WHERE user_id = ? AND prompt_id = ?`),
+  addLike: db.prepare(`INSERT INTO user_likes (user_id, prompt_id) VALUES (?, ?)`),
+  removeLike: db.prepare(`DELETE FROM user_likes WHERE user_id = ? AND prompt_id = ?`),
+  incrementLikes: db.prepare(`UPDATE prompts SET likes = likes + 1 WHERE id = ?`),
+  decrementLikes: db.prepare(`UPDATE prompts SET likes = likes - 1 WHERE id = ?`),
+  getSuggestions: db.prepare(`SELECT id, title FROM prompts WHERE title LIKE ? LIMIT 5`)
+};
 
 // 用户登录 - 返回 JWT Token
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  db.get(`SELECT id, username, email FROM users WHERE username = ? AND password = ?`,
-    [username, password],
-    (err, row) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      if (row) {
-        // 生成 JWT Token（邮箱脱敏后存入 token）
-        const tokenPayload = {
+  try {
+    const row = stmts.findUser.get(username, password);
+    if (row) {
+      const tokenPayload = {
+        id: row.id,
+        username: row.username,
+        email: hideEmail(row.email)
+      };
+      const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+      res.json({
+        success: true,
+        user: {
           id: row.id,
           username: row.username,
           email: hideEmail(row.email)
-        };
-        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
-
-        res.json({
-          success: true,
-          user: {
-            id: row.id,
-            username: row.username,
-            email: hideEmail(row.email)
-          },
-          token
-        });
-      } else {
-        res.json({ success: false, message: '用户名或密码错误' });
-      }
+        },
+        token
+      });
+    } else {
+      res.json({ success: false, message: '用户名或密码错误' });
     }
-  );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 获取所有提示词
 app.get('/api/prompts', (req, res) => {
-  db.all(`SELECT * FROM prompts ORDER BY created_at DESC`, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+  try {
+    res.json(stmts.getAllPrompts.all());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 获取用户发布的提示词 - 需要 JWT 认证（必须在 :id 路由之前）
 app.get('/api/prompts/mine', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-  db.all(`SELECT * FROM prompts WHERE author_id = ? ORDER BY created_at DESC`,
-    [userId],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
-    }
-  );
+  try {
+    res.json(stmts.getPromptsByAuthor.all(req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 获取用户点赞的所有提示词 - 需要 JWT 认证（必须在 :id 路由之前）
 app.get('/api/prompts/liked', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-  db.all(`SELECT p.* FROM prompts p
-          INNER JOIN user_likes ul ON p.id = ul.prompt_id
-          WHERE ul.user_id = ?
-          ORDER BY ul.created_at DESC`,
-    [userId],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
-    }
-  );
+  try {
+    res.json(stmts.getLikedPrompts.all(req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 获取单个提示词
 app.get('/api/prompts/:id', (req, res) => {
-  db.get(`SELECT * FROM prompts WHERE id = ?`, [req.params.id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  try {
+    const row = stmts.getPromptById.get(req.params.id);
     res.json(row);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 搜索提示词（故意留下 SQL 注入漏洞，供学习演示）
@@ -179,13 +171,11 @@ app.get('/api/search', (req, res) => {
   const q = req.query.q;
   // 故意使用字符串拼接，存在 SQL 注入漏洞
   const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%' OR content LIKE '%${q}%' OR tags LIKE '%${q}%'`;
-  db.all(sql, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+  try {
+    res.json(db.prepare(sql).all());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 发布新提示词 - 需要 JWT 认证
@@ -193,25 +183,14 @@ app.post('/api/prompts', authenticateToken, (req, res) => {
   const { title, content, category, tags } = req.body;
   const { id: author_id, username: author_name } = req.user;
 
-  // 从数据库获取真实邮箱（JWT 中的邮箱是脱敏的）
-  db.get(`SELECT email FROM users WHERE id = ?`, [author_id], (err, user) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  try {
+    const user = stmts.getUserEmail.get(author_id);
     const author_email = user ? user.email : '';
-
-    db.run(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [title, content, category, tags, author_id, author_name, author_email],
-      function(err) {
-        if (err) {
-          res.status(500).json({ error: err.message });
-          return;
-        }
-        res.json({ id: this.lastID, message: '发布成功' });
-      }
-    );
-  });
+    const result = stmts.insertPrompt.run(title, content, category, tags, author_id, author_name, author_email);
+    res.json({ id: result.lastInsertRowid, message: '发布成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 点赞/取消点赞 - 需要 JWT 认证
@@ -219,61 +198,30 @@ app.put('/api/prompts/:id/like', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const promptId = req.params.id;
 
-  // 检查是否已点赞
-  db.get(`SELECT id FROM user_likes WHERE user_id = ? AND prompt_id = ?`,
-    [userId, promptId],
-    (err, row) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-
-      if (row) {
-        // 已点赞，取消点赞
-        db.run(`DELETE FROM user_likes WHERE user_id = ? AND prompt_id = ?`,
-          [userId, promptId],
-          function(err) {
-            if (err) {
-              res.status(500).json({ error: err.message });
-              return;
-            }
-            db.run(`UPDATE prompts SET likes = likes - 1 WHERE id = ?`, [promptId]);
-            res.json({ message: '取消点赞', liked: false });
-          }
-        );
-      } else {
-        // 未点赞，添加点赞
-        db.run(`INSERT INTO user_likes (user_id, prompt_id) VALUES (?, ?)`,
-          [userId, promptId],
-          function(err) {
-            if (err) {
-              res.status(500).json({ error: err.message });
-              return;
-            }
-            db.run(`UPDATE prompts SET likes = likes + 1 WHERE id = ?`, [promptId]);
-            res.json({ message: '点赞成功', liked: true });
-          }
-        );
-      }
+  try {
+    const existing = stmts.findLike.get(userId, promptId);
+    if (existing) {
+      stmts.removeLike.run(userId, promptId);
+      stmts.decrementLikes.run(promptId);
+      res.json({ message: '取消点赞', liked: false });
+    } else {
+      stmts.addLike.run(userId, promptId);
+      stmts.incrementLikes.run(promptId);
+      res.json({ message: '点赞成功', liked: true });
     }
-  );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 获取用户点赞状态
 app.get('/api/prompts/:id/like-status', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-  const promptId = req.params.id;
-
-  db.get(`SELECT id FROM user_likes WHERE user_id = ? AND prompt_id = ?`,
-    [userId, promptId],
-    (err, row) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ liked: !!row });
-    }
-  );
+  try {
+    const row = stmts.findLike.get(req.user.id, req.params.id);
+    res.json({ liked: !!row });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 编辑提示词 - 需要 JWT 认证
@@ -283,30 +231,19 @@ app.put('/api/prompts/:id', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const isAdmin = req.user.username === 'admin';
 
-  // 先检查权限
-  db.get(`SELECT author_id FROM prompts WHERE id = ?`, [promptId], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  try {
+    const row = stmts.getPromptById.get(promptId);
     if (!row) {
       return res.status(404).json({ error: '提示词不存在' });
     }
     if (row.author_id !== userId && !isAdmin) {
       return res.status(403).json({ error: '无权编辑此提示词' });
     }
-
-    db.run(`UPDATE prompts SET title = ?, content = ?, category = ?, tags = ? WHERE id = ?`,
-      [title, content, category, tags, promptId],
-      function(err) {
-        if (err) {
-          res.status(500).json({ error: err.message });
-          return;
-        }
-        res.json({ message: '更新成功' });
-      }
-    );
-  });
+    stmts.updatePrompt.run(title, content, category, tags, promptId);
+    res.json({ message: '更新成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 删除提示词 - 需要 JWT 认证
@@ -315,27 +252,19 @@ app.delete('/api/prompts/:id', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const isAdmin = req.user.username === 'admin';
 
-  // 先检查权限
-  db.get(`SELECT author_id FROM prompts WHERE id = ?`, [promptId], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  try {
+    const row = stmts.getPromptById.get(promptId);
     if (!row) {
       return res.status(404).json({ error: '提示词不存在' });
     }
     if (row.author_id !== userId && !isAdmin) {
       return res.status(403).json({ error: '无权删除此提示词' });
     }
-
-    db.run(`DELETE FROM prompts WHERE id = ?`, [promptId], function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ message: '删除成功' });
-    });
-  });
+    stmts.deletePrompt.run(promptId);
+    res.json({ message: '删除成功' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 搜索联想 - 返回匹配的标题和 id
@@ -344,17 +273,11 @@ app.get('/api/suggestions', (req, res) => {
   if (!q || q.trim().length === 0) {
     return res.json([]);
   }
-
-  db.all(`SELECT id, title FROM prompts WHERE title LIKE ? LIMIT 5`,
-    [`%${q}%`],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
-    }
-  );
+  try {
+    res.json(stmts.getSuggestions.all(`%${q}%`));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = 3000;
