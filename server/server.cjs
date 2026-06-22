@@ -283,7 +283,7 @@ app.get('/api/suggestions', (req, res) => {
 // 托管前端静态文件（Vite 构建产物）
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../dist')));
-app.get('*', (req, res) => {
+app.get('/*path', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
