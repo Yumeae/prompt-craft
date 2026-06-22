@@ -280,7 +280,14 @@ app.get('/api/suggestions', (req, res) => {
   }
 });
 
-const PORT = 3000;
+// 托管前端静态文件（Vite 构建产物）
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../dist')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`后端服务器运行在 http://localhost:${PORT}`);
 });

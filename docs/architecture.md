@@ -4,35 +4,31 @@
 
 PromptCraft 采用前后端分离的 B/S 架构，总体模块图如下：
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    用户浏览器 (Client)                    │
-├─────────────────────────────────────────────────────────┤
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │  登录页   │ │  主页    │ │  详情页   │ │  发布页   │   │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐               │
-│  │  编辑页   │ │ 个人中心  │ │  搜索    │               │
-│  └──────────┘ └──────────┘ └──────────┘               │
-├─────────────────────────────────────────────────────────┤
-│              Vue 3 + Vue Router + Axios                  │
-│         Composables: useAuth / usePrompts / useSearch    │
-└───────────────────────┬─────────────────────────────────┘
-                        │ HTTP / REST API
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│                 Express.js 服务端 (Server)                │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │  用户认证    │  │  提示词管理  │  │  点赞系统    │     │
-│  │  JWT 中间件  │  │  CRUD 接口  │  │  状态记录    │     │
-│  └─────────────┘  └─────────────┘  └─────────────┘     │
-├─────────────────────────────────────────────────────────┤
-│              better-sqlite3 (内存数据库)                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────┐          │
-│  │  users   │  │  prompts │  │  user_likes  │          │
-│  └──────────┘  └──────────┘  └──────────────┘          │
-└─────────────────────────────────────────────────────────┘
+
+
+```mermaid
+graph LR
+    subgraph Client["用户浏览器 (Client)"]
+        LoginPage["登录页"] --- HomePage["主页"] --- DetailPage["详情页"] --- CreatePage["发布页"]
+        EditPage["编辑页"] --- ProfilePage["个人中心"] --- SearchComp["搜索"]
+    end
+
+    subgraph VueLayer["Vue 3 + Vue Router + Axios"]
+        useAuth["useAuth"] --- usePrompts["usePrompts"] --- useSearch["useSearch"] --- useModal["useModal"]
+        useClipboard["useClipboard"] --- useEdit["useEdit"] --- usePageLoading["usePageLoading"]
+    end
+
+    subgraph Server["Express.js 服务端 (Server)"]
+        Auth["用户认证\nJWT 中间件"] --- PromptMgmt["提示词管理\nCRUD 接口"] --- LikeSys["点赞系统\n状态记录"]
+    end
+
+    subgraph Database["better-sqlite3 (内存数据库)"]
+        Users[("users")] --- Prompts[("prompts")] --- UserLikes[("user_likes")]
+    end
+
+    Client --> VueLayer
+    VueLayer -->|"HTTP / REST API"| Server
+    Server --> Database
 ```
 
 ### 模块说明
@@ -176,7 +172,44 @@ PromptCraft 采用前后端分离的 B/S 架构，总体模块图如下：
 - 菱形框 ─── 关系（Relationship）
 - 连线上的数字 ─── 基数约束（Cardinality）
 
-### 3.3.3 实体与属性明细
+### 3.3.3 E-R 图（Mermaid 语法）
+
+```mermaid
+erDiagram
+    users {
+        INTEGER id PK "用户唯一标识"
+        TEXT username UK "用户名"
+        TEXT password "登录密码"
+        TEXT email "用户邮箱"
+        DATETIME created_at "注册时间"
+    }
+
+    prompts {
+        INTEGER id PK "提示词唯一标识"
+        TEXT title "标题"
+        TEXT content "内容"
+        TEXT category "分类"
+        TEXT tags "标签"
+        INTEGER author_id FK "发布者ID"
+        TEXT author_name "发布者用户名"
+        TEXT author_email "发布者邮箱"
+        INTEGER likes "点赞数"
+        DATETIME created_at "发布时间"
+    }
+
+    user_likes {
+        INTEGER id PK "记录唯一标识"
+        INTEGER user_id FK "点赞用户"
+        INTEGER prompt_id FK "被点赞提示词"
+        DATETIME created_at "点赞时间"
+    }
+
+    users ||--o{ prompts : "发布"
+    users ||--o{ user_likes : "点赞"
+    prompts ||--o{ user_likes : "被收藏"
+```
+
+### 3.3.4 实体与属性明细
 
 **实体一：users（用户）**
 
@@ -212,14 +245,14 @@ PromptCraft 采用前后端分离的 B/S 架构，总体模块图如下：
 | prompt_id | INTEGER | FK → prompts.id | 被点赞提示词 |
 | created_at | DATETIME | DEFAULT NOW | 点赞时间 |
 
-### 3.3.4 关系说明
+### 3.3.5 关系说明
 
 | 关系 | 实体A | 实体B | 基数 | 说明 |
 |------|-------|-------|------|------|
 | 发布 | users | prompts | 1:N | 一个用户可发布多条提示词，每条提示词属于一个用户 |
 | 点赞 | users | prompts | M:N | 一个用户可点赞多条提示词，一条提示词可被多个用户点赞，通过 user_likes 关联表实现 |
 
-### 3.3.5 博思白板绘制指引
+### 3.3.6 博思白板绘制指引
 
 在博思白板中绘制 E-R 图的步骤：
 
@@ -250,3 +283,120 @@ PromptCraft 采用前后端分离的 B/S 架构，总体模块图如下：
 | GET | /api/prompts/:id/like-status | 获取点赞状态 | JWT |
 | GET | /api/search?q=xxx | 搜索提示词 | 否 |
 | GET | /api/suggestions?q=xxx | 搜索联想 | 否 |
+
+## 3.5 技术选型说明
+
+| 层级 | 技术 | 选型理由 |
+|------|------|---------|
+| 前端框架 | Vue 3 | 渐进式框架，Composition API 提供更好的逻辑复用；国内生态成熟，学习曲线平缓 |
+| 构建工具 | Vite 8 | 基于 ESM 的极速冷启动，HMR 热更新毫秒级响应，开发体验远优于 Webpack |
+| 路由 | Vue Router 4 | Vue 官方路由，原生支持 History 模式、路由守卫、动态参数 |
+| HTTP 客户端 | Axios | 支持请求/拦截器、自动 JSON 转换，浏览器端兼容性好 |
+| 后端框架 | Express 5 | Node.js 最成熟的 Web 框架，中间件机制灵活，社区资源丰富 |
+| 数据库 | better-sqlite3 | 同步 API 无需 async/await，零配置嵌入式数据库，适合课程演示和轻量级应用 |
+| 认证 | JWT (jsonwebtoken) | 无状态令牌，前后端分离友好，无需服务端 Session 存储 |
+| 部署 | Render.com | 免费额度充足，支持 GitHub 自动部署，无需信用卡 |
+
+## 3.6 安全架构设计
+
+### 3.6.1 认证流程
+
+```
+┌────────┐    POST /api/login     ┌────────────┐
+│  浏览器  │ ──── (username,     ──→│  Express   │
+│        │      password)         │  服务端     │
+│        │←── { token, user } ────│            │
+│        │                        │  验证凭据   │
+│        │                        │  签发 JWT   │
+│        │                        └────────────┘
+│        │
+│        │    GET /api/prompts/mine
+│        │ ──── Authorization:    ──→┌────────────┐
+│        │      Bearer <token>       │  JWT 中间件  │
+│        │                           │  验证签名    │
+│        │←── [prompts] ─────────────│  解析用户ID  │
+└────────┘                           └────────────┘
+```
+
+### 3.6.2 安全防护措施
+
+| 威胁 | 防护手段 | 实现位置 |
+|------|---------|---------|
+| XSS (跨站脚本) | Vue `{{ }}` 自动转义，禁用 `v-html` | 前端模板 |
+| SQL 注入 | 参数化查询（`?` 占位符），搜索接口有漏洞演示 | `server/server.cjs` |
+| 水平越权 | 后端校验 `author_id === req.user.id`，管理员例外 | 编辑/删除接口 |
+| 暴力破解 | 登录失败 3 秒冷却锁定 | `useAuth.js` |
+| 隐私泄露 | 邮箱正则脱敏 `a***@domain.com` | `hideEmail()` 函数 |
+| 敏感配置外泄 | JWT_SECRET 通过环境变量注入，不硬编码 | 服务端配置 |
+
+### 3.6.3 SQL 注入攻防演示
+
+**漏洞代码（故意保留，供学习演示）：**
+
+```javascript
+// 字符串拼接 —— 危险！
+const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%'`;
+db.prepare(sql).all();
+```
+
+**攻击载荷：** 输入 `' OR '1'='1` 可绕过条件获取全部数据。
+
+**修复方案：** 使用参数化查询：
+
+```javascript
+// 参数化查询 —— 安全
+const sql = `SELECT * FROM prompts WHERE title LIKE ?`;
+db.prepare(sql).all(`%${q}%`);
+```
+
+## 3.7 部署架构
+
+### 3.7.1 部署拓扑
+
+```
+┌──────────────────────────────────────────────────┐
+│                   Render.com                      │
+│  ┌────────────────────────────────────────────┐  │
+│  │          prompt-craft (Web Service)        │  │
+│  │                                            │  │
+│  │  ┌──────────────┐   ┌──────────────────┐  │  │
+│  │  │  Vite 构建    │   │  Express 服务端   │  │  │
+│  │  │  dist/ 静态   │   │  server.cjs      │  │  │
+│  │  │  资源         │   │  :memory: SQLite │  │  │
+│  │  └──────────────┘   └──────────────────┘  │  │
+│  │         ↑                    ↑             │  │
+│  │         │ 静态文件            │ API 请求     │  │
+│  │         └────────┬───────────┘             │  │
+│  │                  │                         │  │
+│  │           Express static 中间件             │  │
+│  └────────────────────────────────────────────┘  │
+│                      ↑                           │
+│                      │ HTTPS                     │
+│              ┌───────┴───────┐                   │
+│              │   用户浏览器    │                   │
+│              └───────────────┘                   │
+└──────────────────────────────────────────────────┘
+```
+
+### 3.7.2 部署配置
+
+**render.yaml：**
+
+```yaml
+services:
+  - type: web
+    name: prompt-craft
+    runtime: node
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node server/server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+```
+
+**关键说明：**
+
+- `npm install --include=dev`：Vite 属于 devDependencies，生产环境需显式安装
+- `npm run build`：将 Vue SPA 编译为 `dist/` 静态资源
+- `node server/server.cjs`：Express 同时托管静态文件和 API 接口
+- 使用 `:memory:` 数据库，服务重启后数据重置（课程演示用途）
