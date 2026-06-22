@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: prompt-craft
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node server/server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
