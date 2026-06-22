@@ -25,3 +25,6 @@ dist-ssr
 
 # Spec workflow
 .spec-workflow/
+
+# Documentation
+docs/
