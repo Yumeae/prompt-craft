@@ -98,53 +98,141 @@ PromptCraft 采用前后端分离的 B/S 架构，总体模块图如下：
 
 ## 3.3 E-R 图设计
 
-实体关系图如下：
+### 3.3.1 实体属性图
 
 ```
-┌──────────┐         1:N         ┌──────────┐
-│          │ ─────────────────── │          │
-│  users   │   发布              │  prompts │
-│          │ ─────────────────── │          │
-└──────────┘         1:N         └──────────┘
-     │                             │
-     │         N:M                 │
-     │    ┌──────────────┐        │
-     └────│  user_likes  │────────┘
-          └──────────────┘
+                          ┌─────────────────────┐
+                          │       users         │
+                          ├─────────────────────┤
+                     ┌────│ *id (PK)            │
+                     │    │  username           │
+                     │    │  password           │
+                     │    │  email              │
+                     │    │  created_at         │
+                     │    └─────────────────────┘
+                     │              │
+                     │              │ 1
+                     │              │
+                     │         ┌────┴────┐
+                     │         │  发布    │
+                     │         │ (发布者) │
+                     │         └────┬────┘
+                     │              │ N
+                     │              │
+                     │    ┌─────────────────────┐
+                     │    │      prompts        │
+                     │    ├─────────────────────┤
+                     │    │ *id (PK)            │
+                     │    │  title              │
+                     │    │  content            │
+                     │    │  category           │
+                     │    │  tags               │
+                     │    │  author_id (FK)     │──────┘
+                     │    │  author_name        │
+                     │    │  author_email       │
+                     │    │  likes              │
+                     │    │  created_at         │
+                     │    └─────────────────────┘
+                     │              │
+                     │              │ N
+                     │              │
+                     │         ┌────┴────┐
+                     │         │  点赞    │
+                     │         │ (被收藏) │
+                     │         └────┬────┘
+                     │              │ M
+                     │              │
+                     │    ┌─────────────────────┐
+                     │    │    user_likes       │
+                     └───►├─────────────────────┤
+                          │ *id (PK)            │
+                          │  user_id (FK)       │
+                          │  prompt_id (FK)     │
+                          │  created_at         │
+                          └─────────────────────┘
 ```
 
-### 实体属性
+### 3.3.2 E-R 关系图（Chen 表示法）
 
-**users（用户）**
-- id (PK)
-- username
-- password
-- email
+绘制 E-R 图时，请使用以下规范：
 
-**prompts（提示词）**
-- id (PK)
-- title
-- content
-- category
-- tags
-- author_id (FK → users.id)
-- author_name
-- author_email
-- likes
-- created_at
+```
+    ┌─────────┐            ┌─────────┐            ┌─────────┐
+    │         │    1    ┌──┴──┐  N   │         │
+    │  users  ├─────────┤ 发布 ├──────┤ prompts │
+    │         │         └──┬──┘      │         │
+    └─────────┘            │         └─────────┘
+         │                 │              │
+         │ 1               │         N    │
+         │                 │              │
+         │            ┌────┴─────┐        │
+         └────────────┤   点赞    ├────────┘
+               N:M    └──────────┘
+```
 
-**user_likes（点赞记录）**
-- id (PK)
-- user_id (FK → users.id)
-- prompt_id (FK → prompts.id)
-- created_at
+**图例说明：**
+- 矩形框 ═══ 实体（Entity）
+- 椭圆形 ─── 属性（Attribute）
+- 菱形框 ─── 关系（Relationship）
+- 连线上的数字 ─── 基数约束（Cardinality）
 
-### 关系说明
+### 3.3.3 实体与属性明细
 
-| 关系 | 类型 | 说明 |
-|------|------|------|
-| users → prompts | 一对多 (1:N) | 一个用户可发布多条提示词 |
-| users ↔ prompts | 多对多 (N:M) | 通过 user_likes 关联表实现点赞功能 |
+**实体一：users（用户）**
+
+| 属性 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | INTEGER | PK, 自增 | 用户唯一标识 |
+| username | TEXT | UNIQUE, NOT NULL | 用户名 |
+| password | TEXT | NOT NULL | 登录密码 |
+| email | TEXT | - | 用户邮箱 |
+| created_at | DATETIME | DEFAULT NOW | 注册时间 |
+
+**实体二：prompts（提示词）**
+
+| 属性 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | INTEGER | PK, 自增 | 提示词唯一标识 |
+| title | TEXT | NOT NULL | 标题 |
+| content | TEXT | NOT NULL | 内容 |
+| category | TEXT | - | 分类 |
+| tags | TEXT | - | 标签 |
+| author_id | INTEGER | FK → users.id | 发布者ID |
+| author_name | TEXT | - | 发布者用户名 |
+| author_email | TEXT | - | 发布者邮箱 |
+| likes | INTEGER | DEFAULT 0 | 点赞数 |
+| created_at | DATETIME | DEFAULT NOW | 发布时间 |
+
+**关联实体：user_likes（点赞记录）**
+
+| 属性 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | INTEGER | PK, 自增 | 记录唯一标识 |
+| user_id | INTEGER | FK → users.id | 点赞用户 |
+| prompt_id | INTEGER | FK → prompts.id | 被点赞提示词 |
+| created_at | DATETIME | DEFAULT NOW | 点赞时间 |
+
+### 3.3.4 关系说明
+
+| 关系 | 实体A | 实体B | 基数 | 说明 |
+|------|-------|-------|------|------|
+| 发布 | users | prompts | 1:N | 一个用户可发布多条提示词，每条提示词属于一个用户 |
+| 点赞 | users | prompts | M:N | 一个用户可点赞多条提示词，一条提示词可被多个用户点赞，通过 user_likes 关联表实现 |
+
+### 3.3.5 博思白板绘制指引
+
+在博思白板中绘制 E-R 图的步骤：
+
+1. **新建白板** → 选择"实体关系图"模板
+2. **添加实体**：拖入 3 个矩形，分别命名为 users、prompts、user_likes
+3. **添加属性**：为每个实体添加椭圆形属性，主键加下划线
+4. **添加关系**：拖入菱形，写上"发布"和"点赞"
+5. **连线标注基数**：
+   - users → 发布 → prompts：标注 1 和 N
+   - users → 点赞 → prompts：标注 M 和 N（通过 user_likes）
+6. **导出图片**：插入到论文文档中
+
+参考教程：https://boardmix.cn/blog/er-tu-hua-fa/
 
 ## 3.4 API 接口设计
 
