@@ -1,10 +1,8 @@
 import { ref } from 'vue'
 import { usePrompts } from './usePrompts'
-import { useModal } from './useModal'
 
-export function useEdit() {
+export function useEdit({ showAlert, showConfirm }) {
   const { updatePrompt, fetchPrompts } = usePrompts()
-  const { showAlert, showConfirm } = useModal()
 
   const editPrompt = ref(null)
   const editForm = ref({ title: '', category: '写作', content: '', tags: '' })

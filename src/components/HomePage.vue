@@ -122,9 +122,11 @@
         </TransitionGroup>
 
         <div v-if="!isLoading && filteredPrompts.length === 0" class="empty-state">
-          <p>暂无提示词</p>
-          <button v-if="currentUser" @click="$router.push('/create')" class="btn-primary">发布第一条</button>
-          <button v-else @click="$router.push('/login')" class="btn-primary">登录后发布</button>
+          <p v-if="activeCategory === '我喜欢的'">还没有点赞的提示词</p>
+          <p v-else-if="activeCategory === '我发布的'">还没有发布提示词</p>
+          <p v-else>暂无提示词</p>
+          <button v-if="activeCategory !== '我喜欢的' && currentUser" @click="$router.push('/create')" class="btn-primary">发布第一条</button>
+          <button v-else-if="activeCategory !== '我喜欢的'" @click="$router.push('/login')" class="btn-primary">登录后发布</button>
         </div>
       </main>
     </div>

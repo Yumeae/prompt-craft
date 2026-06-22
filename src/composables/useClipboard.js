@@ -1,9 +1,37 @@
-import { useModal } from './useModal'
-
 export function useClipboard() {
-  const { showAlert } = useModal()
+  const showBubble = (text, isError = false) => {
+    const bubble = document.createElement('div')
+    bubble.textContent = text
+    Object.assign(bubble.style, {
+      position: 'fixed',
+      padding: '8px 16px',
+      background: isError ? '#E53935' : '#1A1A1A',
+      color: '#fff',
+      borderRadius: '8px',
+      fontSize: '13px',
+      fontWeight: '500',
+      zIndex: '9999',
+      pointerEvents: 'none',
+      opacity: '0',
+      transition: 'opacity 0.2s ease'
+    })
+    document.body.appendChild(bubble)
 
-  const copyToClipboard = async (text) => {
+    const show = (e) => {
+      bubble.style.left = `${e.clientX - bubble.offsetWidth / 2}px`
+      bubble.style.top = `${e.clientY - bubble.offsetHeight - 12}px`
+      bubble.style.opacity = '1'
+    }
+
+    const hide = () => {
+      bubble.style.opacity = '0'
+      setTimeout(() => bubble.remove(), 200)
+    }
+
+    return { show, hide }
+  }
+
+  const copyToClipboard = async (text, event) => {
     let success = false
     try {
       await navigator.clipboard.writeText(text)
@@ -19,10 +47,11 @@ export function useClipboard() {
         document.body.removeChild(ta)
       }
     }
-    if (success) {
-      await showAlert('已复制到剪贴板！', '成功', 'success')
-    } else {
-      await showAlert('复制失败，请手动复制', '错误', 'error')
+
+    if (event) {
+      const bubble = showBubble(success ? '已复制到剪贴板！' : '复制失败', !success)
+      bubble.show(event)
+      setTimeout(() => bubble.hide(), 1500)
     }
   }
 

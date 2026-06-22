@@ -54,12 +54,36 @@
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { inject, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
 
 const {
-  editForm, isLoading,
+  editPrompt, editForm, isLoading,
   onSaveEditHandler, onCancelEdit
 } = inject('appState')
+
+const route = useRoute()
+
+onMounted(async () => {
+  if (!editPrompt.value) {
+    const id = Number(route.params.id)
+    try {
+      const res = await axios.get(`${API_BASE}/api/prompts/${id}`)
+      editPrompt.value = res.data
+      editForm.value = {
+        title: res.data.title,
+        category: res.data.category,
+        content: res.data.content,
+        tags: res.data.tags || ''
+      }
+    } catch (err) {
+      console.error('获取提示词失败:', err)
+    }
+  }
+})
 
 const getCategoryIcon = (cat) => {
   const icons = {

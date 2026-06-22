@@ -27,7 +27,7 @@
           <div class="detail-content">
             <pre>{{ currentPrompt.content }}</pre>
           </div>
-          <button @click="copyToClipboard(currentPrompt.content)" class="btn-primary">一键复制</button>
+          <button @click="copyToClipboard(currentPrompt.content, $event)" class="btn-primary">一键复制</button>
         </div>
 
         <div v-if="currentPrompt.tags" class="detail-tags">

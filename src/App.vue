@@ -20,7 +20,7 @@ const {
 } = usePrompts()
 const { modal, showAlert, showConfirm, handleModalOk, handleModalCancel } = useModal()
 const { isPageLoading, hidePageLoading } = usePageLoading()
-const { editPrompt, editForm, startEdit, onSaveEdit, cancelEdit } = useEdit()
+const { editPrompt, editForm, startEdit, onSaveEdit, cancelEdit } = useEdit({ showAlert, showConfirm })
 const { copyToClipboard } = useClipboard()
 
 const newPrompt = ref({ title: '', category: '写作', content: '', tags: '', contact: '' })
