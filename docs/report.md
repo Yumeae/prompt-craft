@@ -379,9 +379,7 @@ erDiagram
 
 ### 4.1.1 用户登录模块
 
-**登录流程说明：** 用户输入用户名和密码，前端通过 Axios 发送 POST 请求到 `/api/login`，后端验证凭据后签发 JWT 令牌，前端将 Token 存储到 localStorage，后续请求自动附加到 Authorization 头。
-
-**JWT 认证核心代码（useAuth.js）：**
+用户输入用户名和密码，前端通过 Axios 发送 POST 请求到 `/api/login`，后端验证凭据后签发 JWT 令牌，前端将 Token 存储到 localStorage，后续请求自动附加到 Authorization 头。
 
 ```javascript
 const login = async (username, password) => {
@@ -394,85 +392,56 @@ const login = async (username, password) => {
       return true
     }
     return false
-  } catch (err) {
-    return false
-  }
+  } catch (err) { return false }
 }
 ```
 
 ### 4.1.2 提示词列表与搜索模块
 
-**功能说明：** 主页（HomePage）展示所有提示词卡片网格布局，支持分类筛选（写作/编程/绘画/翻译/其他）、关键词搜索（含 500ms 防抖）、搜索联想下拉。侧边栏提供分类导航和"我发布的""我喜欢的"个人筛选。
-
-**核心代码（usePrompts.js）：**
+主页展示所有提示词卡片网格布局，支持分类筛选（写作/编程/绘画/翻译/其他）、关键词搜索（含 500ms 防抖）、搜索联想下拉。侧边栏提供分类导航和"我发布的""我喜欢的"个人筛选。
 
 ```javascript
 const searchPrompts = async (keyword) => {
-  try {
-    const res = await axios.get(`${API_BASE}/api/search?q=${encodeURIComponent(keyword)}`)
-    promptList.value = res.data
-  } catch (err) {
-    console.error('搜索失败:', err)
-  }
+  const res = await axios.get(`${API_BASE}/api/search?q=${encodeURIComponent(keyword)}`)
+  promptList.value = res.data
 }
 
-// 搜索联想
 const getSuggestions = async (keyword) => {
-  try {
-    const res = await axios.get(`${API_BASE}/api/suggestions?q=${encodeURIComponent(keyword)}`)
-    return res.data
-  } catch (err) {
-    return []
-  }
+  const res = await axios.get(`${API_BASE}/api/suggestions?q=${encodeURIComponent(keyword)}`)
+  return res.data
 }
 ```
 
 ### 4.1.3 提示词详情模块
 
-**功能说明：** 详情页（DetailPage）展示提示词的完整内容、分类标签、作者信息（邮箱脱敏）、发布时间。提供一键复制、点赞/取消点赞、编辑和删除操作按钮。编辑和删除按钮仅对作者和管理员可见，实现前端权限控制。
-
-**前端权限控制代码：**
+详情页展示提示词完整内容、分类标签、作者信息（邮箱脱敏）、发布时间。提供一键复制、点赞、编辑和删除按钮。编辑和删除仅对作者和管理员可见，实现前端权限控制。
 
 ```html
-<button
-  v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
-  @click="onStartEdit(currentPrompt)"
->编辑</button>
-<button
-  v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
-  @click="onDelete(currentPrompt.id)"
->删除</button>
+<button v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
+  @click="onStartEdit(currentPrompt)">编辑</button>
+<button v-if="currentUser && (currentUser.id === currentPrompt.author_id || currentUser.username === 'admin')"
+  @click="onDelete(currentPrompt.id)">删除</button>
 ```
 
 ### 4.1.4 提示词发布模块
 
-**功能说明：** 发布页（CreatePage）提供表单填写标题、选择分类（单选按钮组）、输入提示词内容和标签。前端实时校验：标题至少 3 字符、内容至少 10 字符，不满足条件时输入框标红并显示错误提示。提交时附带 JWT 令牌，后端校验登录状态。
-
-**发布核心代码（usePrompts.js）：**
+发布页提供表单填写标题、选择分类、输入内容和标签。前端实时校验：标题至少 3 字符、内容至少 10 字符，不满足时输入框标红提示。提交时附带 JWT 令牌，后端校验登录状态。
 
 ```javascript
 const createPrompt = async (promptData) => {
   isLoading.value = true
   try {
-    await axios.post(`${API_BASE}/api/prompts`, promptData, {
-      headers: getAuthHeaders()
-    })
+    await axios.post(`${API_BASE}/api/prompts`, promptData, { headers: getAuthHeaders() })
     await fetchPrompts()
     return true
-  } catch (err) {
-    console.error('发布失败:', err)
-    return false
-  } finally {
-    isLoading.value = false
-  }
+  } catch (err) { return false }
+  finally { isLoading.value = false }
 }
 ```
 
 ### 4.1.5 提示词编辑模块
 
-**功能说明：** 编辑页（EditPage）复用发布页的表单结构，进入时自动填充原有数据。提交前弹出确认对话框，保存成功后刷新列表并跳转回主页。由 useEdit composable 管理编辑状态。
-
-**核心代码（useEdit.js）：**
+编辑页复用发布页表单结构，进入时自动填充原数据。提交前弹出确认对话框，保存成功后刷新列表并跳转主页。由 useEdit composable 管理编辑状态。
 
 ```javascript
 const onSaveEdit = async (navigateTo) => {
@@ -482,193 +451,104 @@ const onSaveEdit = async (navigateTo) => {
   }
   const confirmed = await showConfirm('确定保存修改吗？')
   if (!confirmed) return false
-
   const success = await updatePrompt(editPrompt.value.id, editForm.value)
   if (success) {
     await showAlert('更新成功！', '成功', 'success')
     editPrompt.value = null
-    if (navigateTo) navigateTo('/')
+    navigateTo('/')
     await fetchPrompts()
-    return true
   }
-  return false
 }
 ```
 
 ### 4.1.6 一键复制模块
 
-**功能说明：** 用户点击详情页的"一键复制"按钮，提示词内容自动复制到剪贴板，鼠标位置弹出浮动气泡提示"已复制到剪贴板！"，1.5 秒后自动消失。优先使用 `navigator.clipboard` API，不支持时降级为 `document.execCommand('copy')`。
-
-**核心代码（useClipboard.js）：**
+点击"一键复制"按钮，内容自动复制到剪贴板，鼠标位置弹出浮动气泡提示"已复制到剪贴板！"，1.5 秒后消失。优先使用 `navigator.clipboard` API，不支持时降级为 `execCommand('copy')`。
 
 ```javascript
 const copyToClipboard = async (text, event) => {
   let success = false
-  try {
-    await navigator.clipboard.writeText(text)
-    success = true
-  } catch {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    try {
-      success = document.execCommand('copy')
-    } finally {
-      document.body.removeChild(ta)
-    }
+  try { await navigator.clipboard.writeText(text); success = true }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select()
+    try { success = document.execCommand('copy') } finally { ta.remove() }
   }
-
-  if (event) {
-    const bubble = showBubble(success ? '已复制到剪贴板！' : '复制失败', !success)
-    bubble.show(event)
-    setTimeout(() => bubble.hide(), 1500)
-  }
+  const bubble = showBubble(success ? '已复制到剪贴板！' : '复制失败', !success)
+  bubble.show(event); setTimeout(() => bubble.hide(), 1500)
 }
 ```
 
 ### 4.1.7 删除模块
 
-**功能说明：** 用户点击删除按钮后弹出确认对话框，确认后调用 DELETE 接口删除提示词，成功后自动刷新列表。删除操作需要 JWT 认证，后端校验操作者是否为作者或管理员，防止水平越权。
-
-**核心代码（usePrompts.js）：**
+点击删除按钮后弹出确认对话框，确认后调用 DELETE 接口，成功后自动刷新列表。后端校验操作者是否为作者或管理员，防止水平越权。
 
 ```javascript
 const deletePrompt = async (id) => {
   isLoading.value = true
   try {
-    await axios.delete(`${API_BASE}/api/prompts/${id}`, {
-      headers: getAuthHeaders()
-    })
+    await axios.delete(`${API_BASE}/api/prompts/${id}`, { headers: getAuthHeaders() })
     await fetchPrompts()
     return true
-  } catch (err) {
-    console.error('删除失败:', err)
-    return false
-  } finally {
-    isLoading.value = false
-  }
+  } catch (err) { return false }
+  finally { isLoading.value = false }
 }
 ```
 
 ### 4.1.8 个人中心模块
 
-**功能说明：** 个人中心页（ProfilePage）展示当前用户的账号信息（用户名、邮箱可切换显示/脱敏、发布数量），以及"我的提示词"列表。通过 GET `/api/prompts/mine` 接口获取当前用户发布的提示词。
-
-**核心代码（usePrompts.js）：**
+个人中心页展示当前用户账号信息（用户名、邮箱可切换显示/脱敏、发布数量）及"我的提示词"列表。通过 GET `/api/prompts/mine` 接口获取当前用户发布的提示词。
 
 ```javascript
 const fetchMyPrompts = async () => {
   isLoading.value = true
   try {
-    const res = await axios.get(`${API_BASE}/api/prompts/mine`, {
-      headers: getAuthHeaders()
-    })
+    const res = await axios.get(`${API_BASE}/api/prompts/mine`, { headers: getAuthHeaders() })
     promptList.value = res.data
-  } catch (err) {
-    console.error('获取我的提示词失败:', err)
-  } finally {
-    isLoading.value = false
-  }
+  } catch (err) { console.error('获取我的提示词失败:', err) }
+  finally { isLoading.value = false }
 }
 ```
 
 ### 4.1.9 点赞模块
 
-**功能说明：** 用户可对提示词进行点赞或取消点赞，前端实时更新点赞数和按钮状态，通过 user_likes 联合唯一约束防止重复点赞。
-
-**核心代码（usePrompts.js）：**
+用户可对提示词点赞或取消点赞，前端实时更新点赞数和按钮状态，通过 user_likes 联合唯一约束防止重复点赞。
 
 ```javascript
 const likePrompt = async (id) => {
-  try {
-    const res = await axios.put(`${API_BASE}/api/prompts/${id}/like`, null, {
-      headers: getAuthHeaders()
-    })
-    const idx = promptList.value.findIndex(p => p.id === id)
-    if (idx !== -1) {
-      const updated = { ...promptList.value[idx] }
-      updated.likes = updated.likes + (res.data.liked ? 1 : -1)
-      promptList.value[idx] = updated
-    }
-    return res.data.liked
-  } catch (err) {
-    return null
+  const res = await axios.put(`${API_BASE}/api/prompts/${id}/like`, null, { headers: getAuthHeaders() })
+  const idx = promptList.value.findIndex(p => p.id === id)
+  if (idx !== -1) {
+    const updated = { ...promptList.value[idx] }
+    updated.likes += res.data.liked ? 1 : -1
+    promptList.value[idx] = updated
   }
+  return res.data.liked
 }
 ```
 
 ### 4.1.10 深色/浅色主题切换
 
-**功能说明：** 全站支持深色与浅色两套主题，用户可通过导航栏右侧的月亮/太阳图标一键切换。切换时从按钮位置以圆形扩散动画覆盖全屏，视觉过渡流畅。主题偏好持久化到 localStorage，刷新页面后保持，并自动检测系统 `prefers-color-scheme` 设置。
-
-**CSS 变量体系：** 在 `App.vue` 的全局样式中定义 `:root` 浅色变量和 `[data-theme="dark"]` 深色变量，涵盖背景、边框、文字、按钮、阴影等 16 个语义化变量。所有组件通过 `var(--xxx)` 引用，杜绝硬编码颜色。
-
-**核心代码（useTheme.js）：**
+全站支持深色与浅色两套主题，通过导航栏月亮/太阳图标切换。切换时从按钮位置以圆形扩散动画覆盖全屏（Web Animations API + clip-path），采用 ease-in 缓动加速扩散。主题偏好持久化到 localStorage，自动检测系统 `prefers-color-scheme`。所有组件通过 CSS 变量引用颜色，杜绝硬编码。
 
 ```javascript
-import { ref } from 'vue'
-
-const theme = ref('light')
-
-const applyTheme = (value) => {
-  document.documentElement.dataset.theme = value
-  document.documentElement.style.colorScheme = value
-}
-
-export function useTheme() {
-  const initTheme = () => {
-    const saved = localStorage.getItem('theme')
-    if (saved) {
-      theme.value = saved
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      theme.value = 'dark'
-    }
-    applyTheme(theme.value)
-  }
-
-  const toggleThemeWithAnimation = (event) => {
-    const button = event.currentTarget
-    const rect = button.getBoundingClientRect()
-    const cx = rect.left + rect.width / 2
-    const cy = rect.top + rect.height / 2
-    const maxR = Math.hypot(
-      Math.max(cx, window.innerWidth - cx),
-      Math.max(cy, window.innerHeight - cy)
-    )
-
-    const overlay = document.createElement('div')
-    overlay.style.cssText = `
-      position:fixed;inset:0;z-index:99999;pointer-events:none;
-      background:${theme.value === 'light' ? '#1a1a1a' : '#f5f5f5'};
-      clip-path:circle(0px at ${cx}px ${cy}px);
-    `
-    document.body.appendChild(overlay)
-
-    const anim = overlay.animate(
-      [
-        { clipPath: `circle(0px at ${cx}px ${cy}px)`, easing: 'ease-in' },
-        { clipPath: `circle(${maxR * 0.6}px at ${cx}px ${cy}px)`, easing: 'ease-in' },
-        { clipPath: `circle(${maxR}px at ${cx}px ${cy}px)` }
-      ],
-      { duration: 450, easing: 'ease-in', fill: 'forwards' }
-    )
-
-    setTimeout(() => { toggleTheme() }, 200)
-    anim.onfinish = () => {
-      const fadeOut = overlay.animate(
-        [{ opacity: 1 }, { opacity: 0 }],
-        { duration: 300, easing: 'ease-out', fill: 'forwards' }
-      )
-      fadeOut.onfinish = () => overlay.remove()
-    }
-  }
-
-  return { theme, initTheme, toggleThemeWithAnimation }
+const toggleThemeWithAnimation = (event) => {
+  const { left, top, width, height } = event.currentTarget.getBoundingClientRect()
+  const cx = left + width / 2, cy = top + height / 2
+  const maxR = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy))
+  const overlay = document.createElement('div')
+  overlay.style.cssText = `position:fixed;inset:0;z-index:99999;pointer-events:none;
+    background:${theme.value === 'light' ? '#1a1a1a' : '#f5f5f5'};clip-path:circle(0px at ${cx}px ${cy}px)`
+  document.body.appendChild(overlay)
+  const anim = overlay.animate([
+    { clipPath: `circle(0px at ${cx}px ${cy}px)`, easing: 'ease-in' },
+    { clipPath: `circle(${maxR * 0.6}px at ${cx}px ${cy}px)`, easing: 'ease-in' },
+    { clipPath: `circle(${maxR}px at ${cx}px ${cy}px)` }
+  ], { duration: 450, fill: 'forwards' })
+  setTimeout(() => toggleTheme(), 200)
+  anim.onfinish = () => overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 }).onfinish = () => overlay.remove()
 }
 ```
-
-**动画原理：** 点击切换按钮时，获取按钮中心坐标，创建一个覆盖全屏的遮罩层，使用 Web Animations API 的 `clip-path: circle()` 从 0 扩展到视窗对角线半径，采用 `ease-in` 缓动实现加速扩散效果。在动画进行到 200ms 时切换主题变量，遮罩层颜色为目标主题的背景色，扩散完成后淡出移除。
 
 ## 4.2 后端实现
 
