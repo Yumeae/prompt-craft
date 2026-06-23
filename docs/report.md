@@ -729,25 +729,68 @@ app.put('/api/prompts/:id', authenticateToken, (req, res) => {
 
 ## 4.3 安全实现
 
-### 4.3.1 JWT 身份认证
+### 4.3.1 用户身份认证与权限管理
 
-用户登录成功后，服务端签发 JWT 令牌（有效期 24 小时），前端存储到 localStorage，每次请求通过 Authorization: Bearer 头传递，JWT 中间件验证签名和有效期。
+**JWT 认证流程：** 用户登录成功后，服务端签发 JWT 令牌（有效期 24 小时），令牌中包含用户 id、username、email（已脱敏）。前端将 Token 存储到 localStorage，后续每次请求通过 `Authorization: Bearer` 头传递，JWT 中间件验证签名和有效期后将用户信息挂载到 `req.user`。
 
-### 4.3.2 XSS 防护
+**界面表现：** 登录页（LoginPage）输入用户名密码后跳转主页；未登录用户访问发布页、个人中心等受保护路由时，Vue Router 路由守卫自动重定向到登录页；登录失败后按钮锁定 3 秒并显示错误提示，防止暴力破解。
 
-前端全局使用 Vue 的 `{{ }}` 插值表达式展示用户内容，禁用 `v-html`。Vue 的插值表达式会自动将 `<` 转义为 `&lt;`，使恶意脚本失效。
+**水平越权防护：** 编辑和删除接口后端校验 `author_id`，仅作者和管理员可操作。前端详情页（DetailPage）同样通过 `v-if` 控制编辑/删除按钮的可见性，实现前后端双重防护。
 
-### 4.3.3 SQL 注入防护
+**核心代码 1 — JWT 中间件与越权校验：**
 
-后端使用参数化查询（`?` 占位符）替代字符串拼接，用户输入被当作纯文本处理，彻底阻断注入攻击。搜索接口故意保留了字符串拼接的漏洞版本，供课堂演示攻防对比。
+```javascript
+const authenticateToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1]
+  if (!token) return res.status(401).json({ error: '未提供认证令牌' })
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: '令牌无效或已过期' })
+    req.user = user; next()
+  })
+}
 
-### 4.3.4 防暴力破解
+app.put('/api/prompts/:id', authenticateToken, (req, res) => {
+  const row = stmts.getPromptById.get(req.params.id)
+  if (row.author_id !== req.user.id && req.user.username !== 'admin')
+    return res.status(403).json({ error: '无权编辑此提示词' })
+  stmts.updatePrompt.run(title, content, category, tags, req.params.id)
+})
+```
 
-登录失败后前端锁定 3 秒，防止快速尝试密码组合。
+### 4.3.2 防止常见攻击
 
-### 4.3.5 数据脱敏
+**XSS 防护：** 前端全局使用 Vue 的 `{{ }}` 插值表达式展示用户内容，禁用 `v-html`。Vue 插值会自动将 `<script>` 转义为 `&lt;script&gt;`，使恶意脚本失效。在搜索框输入 `<script>alert(1)</script>` 仅显示为文本，不会执行。
 
-用户邮箱通过正则表达式脱敏显示：`admin@promptcraft.com` → `a***@promptcraft.com`。
+**SQL 注入防护：** 后端使用 better-sqlite3 预编译语句（`?` 占位符），用户输入被当作纯文本处理，彻底阻断注入。搜索接口故意保留字符串拼接漏洞版本，输入 `' OR '1'='1` 可返回全部数据，供课堂攻防对比。
+
+**防暴力破解：** 登录失败后前端锁定 3 秒，`isLock` 状态禁用登录按钮并显示倒计时，防止快速尝试密码组合。
+
+**数据脱敏：** 用户邮箱通过正则脱敏：`admin@promptcraft.com` → `ad***@promptcraft.com`，API 返回数据时统一处理，前端详情页和主页均显示脱敏后的邮箱。
+
+**核心代码 2 — 邮箱脱敏：**
+
+```javascript
+const hideEmail = (email) => {
+  if (!email) return ''
+  return email.replace(/(.{2})(.*)(@.*)/, '$1***$3')
+}
+const maskPrompt = (p) => ({ ...p, author_email: hideEmail(p.author_email) })
+const maskPrompts = (list) => list.map(maskPrompt)
+```
+
+**核心代码 3 — 登录防爆破（前端）：**
+
+```javascript
+const handleLogin = async () => {
+  if (isLock.value) return
+  const success = await onLogin(loginForm.value.username, loginForm.value.password)
+  if (!success) {
+    isLock.value = true
+    loginError.value = '用户名或密码错误，请等待3秒'
+    setTimeout(() => { isLock.value = false; loginError.value = '' }, 3000)
+  }
+}
+```
 
 ---
 
