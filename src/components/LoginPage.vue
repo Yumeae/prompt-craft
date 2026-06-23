@@ -16,7 +16,6 @@
           {{ isLock ? '请等待3秒...' : '进入工场' }}
         </button>
         <p v-if="loginError" class="error-text">{{ loginError }}</p>
-        <p class="hint-text">测试账号：admin / ******</p>
       </div>
     </div>
   </div>
