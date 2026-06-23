@@ -687,8 +687,16 @@ const stmts = {
 const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%'`
 db.prepare(sql).all()  // 输入 ' OR '1'='1 可注入
 
-// 安全版（其余所有接口）
-stmts.getSuggestions.all(`%${q}%`)  // 参数化查询，无法注入
+// 安全版（其余所有接口均使用预编译语句）
+stmts.getAllPrompts.all()                          // GET /api/prompts
+stmts.getPromptById.get(req.params.id)             // GET /api/prompts/:id
+stmts.getPromptsByAuthor.all(req.user.id)          // GET /api/prompts/mine
+stmts.getLikedPrompts.all(req.user.id)             // GET /api/prompts/liked
+stmts.insertPrompt.run(title, content, ...)        // POST /api/prompts
+stmts.updatePrompt.run(title, content, ..., id)    // PUT /api/prompts/:id
+stmts.deletePrompt.run(id)                         // DELETE /api/prompts/:id
+stmts.findLike.get(req.user.id, req.params.id)    // PUT /api/prompts/:id/like
+stmts.getSuggestions.all(`%${q}%`)                 // GET /api/suggestions
 ```
 
 **邮箱脱敏：** API 返回提示词数据时，对 author_email 字段做正则脱敏处理：
