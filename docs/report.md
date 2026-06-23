@@ -763,7 +763,7 @@ app.put('/api/prompts/:id', authenticateToken, (req, res) => {
 
 **SQL 注入防护：** 后端使用 better-sqlite3 预编译语句（`?` 占位符），用户输入被当作纯文本处理，彻底阻断注入。搜索接口故意保留字符串拼接漏洞版本，输入 `' OR '1'='1` 可返回全部数据，供课堂攻防对比。
 
-**防暴力破解：** 登录失败后前端锁定 3 秒，`isLock` 状态禁用登录按钮并显示倒计时，防止快速尝试密码组合。
+**防暴力破解：** 前端登录失败后锁定 3 秒禁用按钮，作为 UX 层面的防护。但纯前端限制可被绕过（直接调用 API），因此后端同步实现了基于 IP 的速率限制：同一 IP 5 分钟内登录失败超过 5 次，返回 429 状态码拒绝请求。
 
 **数据脱敏：** 用户邮箱通过正则脱敏：`admin@promptcraft.com` → `ad***@promptcraft.com`，API 返回数据时统一处理，前端详情页和主页均显示脱敏后的邮箱。
 
@@ -778,18 +778,25 @@ const maskPrompt = (p) => ({ ...p, author_email: hideEmail(p.author_email) })
 const maskPrompts = (list) => list.map(maskPrompt)
 ```
 
-**核心代码 3 — 登录防爆破（前端）：**
+**核心代码 3 — 后端登录限流：**
 
 ```javascript
-const handleLogin = async () => {
-  if (isLock.value) return
-  const success = await onLogin(loginForm.value.username, loginForm.value.password)
-  if (!success) {
-    isLock.value = true
-    loginError.value = '用户名或密码错误，请等待3秒'
-    setTimeout(() => { isLock.value = false; loginError.value = '' }, 3000)
-  }
-}
+const loginAttempts = new Map()
+const MAX_ATTEMPTS = 5, WINDOW_MS = 5 * 60 * 1000
+
+app.post('/api/login', (req, res) => {
+  const ip = req.ip
+  const record = loginAttempts.get(ip) || { count: 0, firstAt: Date.now() }
+  if (Date.now() - record.firstAt > WINDOW_MS) { record.count = 0; record.firstAt = Date.now() }
+  if (record.count >= MAX_ATTEMPTS) return res.status(429).json({ error: '尝试次数过多，请5分钟后重试' })
+
+  const { username, password } = req.body
+  const row = stmts.findUser.get(username, password)
+  if (!row) { record.count++; loginAttempts.set(ip, record); return res.json({ success: false }) }
+  loginAttempts.delete(ip)
+  const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: '24h' })
+  res.json({ success: true, user: { id: row.id, username: row.username }, token })
+})
 ```
 
 ---

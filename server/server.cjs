@@ -107,12 +107,28 @@ const stmts = {
   getSuggestions: db.prepare(`SELECT id, title FROM prompts WHERE title LIKE ? LIMIT 5`)
 };
 
+// 登录防爆破：IP 速率限制
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 5 * 60 * 1000;
+
 // 用户登录 - 返回 JWT Token
 app.post('/api/login', (req, res) => {
+  const ip = req.ip;
+  const record = loginAttempts.get(ip) || { count: 0, firstAt: Date.now() };
+  if (Date.now() - record.firstAt > WINDOW_MS) {
+    record.count = 0;
+    record.firstAt = Date.now();
+  }
+  if (record.count >= MAX_ATTEMPTS) {
+    return res.status(429).json({ error: '尝试次数过多，请5分钟后重试' });
+  }
+
   const { username, password } = req.body;
   try {
     const row = stmts.findUser.get(username, password);
     if (row) {
+      loginAttempts.delete(ip);
       const tokenPayload = {
         id: row.id,
         username: row.username,
@@ -129,6 +145,8 @@ app.post('/api/login', (req, res) => {
         token
       });
     } else {
+      record.count++;
+      loginAttempts.set(ip, record);
       res.json({ success: false, message: '用户名或密码错误' });
     }
   } catch (err) {

@@ -44,7 +44,13 @@ export function useAuth() {
         return false
       }
     } catch (err) {
-      loginError.value = '网络错误，请检查后端服务是否启动'
+      if (err.response && err.response.status === 429) {
+        loginError.value = err.response.data.error || '尝试次数过多，请稍后重试'
+        isLock.value = true
+        setTimeout(() => { isLock.value = false }, 5000)
+      } else {
+        loginError.value = '网络错误，请检查后端服务是否启动'
+      }
       return false
     }
   }
