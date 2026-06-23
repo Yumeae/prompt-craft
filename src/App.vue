@@ -8,6 +8,7 @@ import { usePageLoading } from './composables/usePageLoading'
 import { useSearch } from './composables/useSearch'
 import { useEdit } from './composables/useEdit'
 import { useClipboard } from './composables/useClipboard'
+import { useTheme } from './composables/useTheme'
 import PageLoading from './components/PageLoading.vue'
 import Modal from './components/Modal.vue'
 
@@ -22,6 +23,7 @@ const { modal, showAlert, showConfirm, handleModalOk, handleModalCancel } = useM
 const { isPageLoading, hidePageLoading } = usePageLoading()
 const { editPrompt, editForm, startEdit, onSaveEdit, cancelEdit } = useEdit({ showAlert, showConfirm })
 const { copyToClipboard } = useClipboard()
+const { theme, initTheme, toggleThemeWithAnimation } = useTheme()
 
 const newPrompt = ref({ title: '', category: '写作', content: '', tags: '', contact: '' })
 const activeCategory = ref('全部')
@@ -78,6 +80,7 @@ const myPrompts = computed(() => {
 })
 
 onMounted(async () => {
+  initTheme()
   await fetchPrompts()
   hidePageLoading()
 })
@@ -182,6 +185,8 @@ const onCancelEdit = () => {
 }
 
 provide('appState', {
+  theme,
+  toggleTheme: toggleThemeWithAnimation,
   currentUser,
   isLoading,
   stats,
@@ -241,10 +246,50 @@ provide('appState', {
   box-sizing: border-box;
 }
 
+:root {
+  --bg-page: #FAFAFA;
+  --bg-surface: #fff;
+  --bg-hover: #F5F5F5;
+  --bg-input: #FAFAFA;
+  --border: #E5E5E5;
+  --border-hover: #D0D0D0;
+  --text-primary: #1A1A1A;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --text-weak: #BBB;
+  --btn-primary-bg: #1A1A1A;
+  --btn-primary-text: #fff;
+  --btn-primary-hover: #333;
+  --btn-disabled: #CCC;
+  --danger: #E53935;
+  --shadow: rgba(0,0,0,0.05);
+  --shadow-md: rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] {
+  --bg-page: #111111;
+  --bg-surface: #1a1a1a;
+  --bg-hover: #2a2a2a;
+  --bg-input: #222222;
+  --border: #333333;
+  --border-hover: #444444;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  --text-weak: #555555;
+  --btn-primary-bg: #e5e5e5;
+  --btn-primary-text: #111111;
+  --btn-primary-hover: #cccccc;
+  --btn-disabled: #444444;
+  --danger: #ef5350;
+  --shadow: rgba(0,0,0,0.4);
+  --shadow-md: rgba(0,0,0,0.5);
+}
+
 body {
   font-family: inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: #FAFAFA;
-  color: #1A1A1A;
+  background: var(--bg-page);
+  color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }

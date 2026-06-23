@@ -23,7 +23,7 @@ defineProps({
   left: 0;
   right: 0;
   bottom: 0;
-  background: #FAFAFA;
+  background: var(--bg-page);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -40,8 +40,8 @@ defineProps({
 .page-loading-spinner {
   width: 48px;
   height: 48px;
-  border: 3px solid #E5E5E5;
-  border-top-color: #1A1A1A;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -56,13 +56,13 @@ defineProps({
   font-size: 36px;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #1A1A1A;
+  color: var(--text-primary);
   font-family: 'PingFang SC', -apple-system, MiSans, sans-serif;
 }
 
 .page-loading-text {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .fade-enter-active,

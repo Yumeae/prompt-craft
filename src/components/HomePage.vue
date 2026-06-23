@@ -5,6 +5,22 @@
         <span class="logo-text">PromptCraft</span>
       </div>
       <div class="nav-right">
+        <button @click="toggleTheme" class="btn-theme" :title="theme === 'light' ? '切换深色模式' : '切换浅色模式'">
+          <svg v-if="theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
         <template v-if="currentUser">
           <span class="user-name">{{ currentUser.username }}</span>
           <button @click="$router.push('/create')" class="btn-primary btn-sm">+ 发布</button>
@@ -138,9 +154,9 @@ import { inject } from 'vue'
 
 const {
   currentUser, isLoading, stats, searchText, suggestions, showSuggestions,
-  filteredPrompts, categories, userCategories, activeCategory,
+  filteredPrompts, categories, userCategories, activeCategory, theme,
   onLogout, onFilterCategory, onShowDetail, selectSuggestion, hideSuggestions,
-  onUpdateSearchText, onShowSuggestions
+  onUpdateSearchText, onShowSuggestions, toggleTheme
 } = inject('appState')
 
 const hideEmail = (email) => {
@@ -167,8 +183,8 @@ const getCategoryIcon = (cat) => {
   justify-content: space-between;
   height: 60px;
   padding: 0 32px;
-  background: #fff;
-  border-bottom: 1px solid #F0F0F0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -183,25 +199,25 @@ const getCategoryIcon = (cat) => {
 .logo-text {
   font-size: 18px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .user-name {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .hero-section {
   text-align: center;
   padding: 60px 32px 40px;
-  background: #fff;
+  background: var(--bg-surface);
 }
 
 .hero-title {
   font-size: 36px;
   font-weight: 800;
-  color: #1A1A1A;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
   margin-bottom: 12px;
   font-family: 'PingFang SC', -apple-system, MiSans, sans-serif;
@@ -209,7 +225,7 @@ const getCategoryIcon = (cat) => {
 
 .hero-subtitle {
   font-size: 16px;
-  color: #999;
+  color: var(--text-muted);
   margin-bottom: 32px;
 }
 
@@ -226,24 +242,24 @@ const getCategoryIcon = (cat) => {
   transform: translateY(-50%);
   width: 18px;
   height: 18px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .search-input {
   width: 100%;
   padding: 14px 16px 14px 48px;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 15px;
-  background: #FAFAFA;
+  background: var(--bg-input);
   transition: all 0.2s;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #1A1A1A;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: var(--text-primary);
+  background: var(--bg-surface);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .suggestions-dropdown {
@@ -251,24 +267,24 @@ const getCategoryIcon = (cat) => {
   top: 100%;
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 12px 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px var(--shadow-md);
   z-index: 10;
 }
 
 .suggestion-item {
   padding: 12px 16px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .suggestion-item:hover {
-  background: #F5F5F5;
+  background: var(--bg-hover);
 }
 
 .stats-row {
@@ -276,8 +292,8 @@ const getCategoryIcon = (cat) => {
   justify-content: center;
   gap: 24px;
   padding: 24px 32px;
-  background: #fff;
-  border-bottom: 1px solid #F0F0F0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .stat-chip {
@@ -289,12 +305,12 @@ const getCategoryIcon = (cat) => {
 .stat-num {
   font-size: 20px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .main-content {
@@ -313,7 +329,7 @@ const getCategoryIcon = (cat) => {
 .sidebar-title {
   font-size: 13px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 12px;
@@ -327,24 +343,24 @@ const getCategoryIcon = (cat) => {
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .sidebar-item:hover {
-  background: #F0F0F0;
-  color: #1A1A1A;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .sidebar-item.active {
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
 }
 
 .sidebar-divider {
   height: 1px;
-  background: #E5E5E5;
+  background: var(--border);
   margin: 12px 0;
 }
 
@@ -370,8 +386,8 @@ const getCategoryIcon = (cat) => {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #E5E5E5;
-  border-top-color: #1A1A1A;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -385,13 +401,13 @@ const getCategoryIcon = (cat) => {
 .loading-text {
   margin-top: 16px;
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state {
   text-align: center;
   padding: 80px 20px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state p {
@@ -405,8 +421,8 @@ const getCategoryIcon = (cat) => {
 }
 
 .prompt-card {
-  background: #fff;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
@@ -414,16 +430,16 @@ const getCategoryIcon = (cat) => {
 }
 
 .prompt-card:hover {
-  border-color: #D0D0D0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px var(--shadow);
   transform: translateY(-2px);
 }
 
 .card-category {
   display: inline-block;
   padding: 2px 10px;
-  background: #F5F5F5;
-  color: #666;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-radius: 4px;
   font-size: 12px;
   margin-bottom: 12px;
@@ -432,7 +448,7 @@ const getCategoryIcon = (cat) => {
 .card-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 8px;
   line-height: 1.4;
   display: -webkit-box;
@@ -443,7 +459,7 @@ const getCategoryIcon = (cat) => {
 
 .card-desc {
   font-size: 13px;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 16px;
   display: -webkit-box;
@@ -461,8 +477,8 @@ const getCategoryIcon = (cat) => {
 
 .card-tag {
   padding: 2px 8px;
-  background: #F0F0F0;
-  color: #666;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-radius: 4px;
   font-size: 11px;
 }
@@ -472,12 +488,12 @@ const getCategoryIcon = (cat) => {
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #F5F5F5;
+  border-top: 1px solid var(--border);
 }
 
 .card-author {
   font-size: 12px;
-  color: #BBB;
+  color: var(--text-weak);
 }
 
 .card-likes {
@@ -502,8 +518,8 @@ const getCategoryIcon = (cat) => {
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -513,7 +529,7 @@ const getCategoryIcon = (cat) => {
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -529,7 +545,7 @@ const getCategoryIcon = (cat) => {
 .btn-ghost {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
+  color: var(--text-secondary);
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -537,7 +553,26 @@ const getCategoryIcon = (cat) => {
 }
 
 .btn-ghost:hover {
-  color: #1A1A1A;
+  color: var(--text-primary);
+}
+
+.btn-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-theme:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {

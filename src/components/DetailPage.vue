@@ -7,7 +7,24 @@
       <div class="nav-center">
         <span class="logo-text">提示词详情</span>
       </div>
-      <div class="nav-right"></div>
+      <div class="nav-right">
+        <button @click="toggleTheme" class="btn-theme" :title="theme === 'light' ? '切换深色模式' : '切换浅色模式'">
+          <svg v-if="theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="detail-page" v-if="currentPrompt">
@@ -75,8 +92,8 @@ import axios from 'axios'
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 const {
-  currentPrompt, currentUser, isLiked, promptList,
-  onGoBack, copyToClipboard, onLike, onStartEdit, onDelete, getLikeStatus
+  currentPrompt, currentUser, isLiked, promptList, theme,
+  onGoBack, copyToClipboard, onLike, onStartEdit, onDelete, getLikeStatus, toggleTheme
 } = inject('appState')
 
 const route = useRoute()
@@ -116,8 +133,8 @@ const hideEmail = (email) => {
   justify-content: space-between;
   height: 60px;
   padding: 0 32px;
-  background: #fff;
-  border-bottom: 1px solid #F0F0F0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -138,7 +155,7 @@ const hideEmail = (email) => {
 .logo-text {
   font-size: 18px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -149,22 +166,22 @@ const hideEmail = (email) => {
 }
 
 .detail-card {
-  background: #fff;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
 }
 
 .detail-header {
   padding: 32px;
-  border-bottom: 1px solid #F0F0F0;
+  border-bottom: 1px solid var(--border);
 }
 
 .detail-category {
   display: inline-block;
   padding: 4px 12px;
-  background: #F5F5F5;
-  color: #666;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-radius: 4px;
   font-size: 13px;
   margin-bottom: 16px;
@@ -173,7 +190,7 @@ const hideEmail = (email) => {
 .detail-title {
   font-size: 28px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 12px;
   letter-spacing: -0.02em;
   font-family: 'PingFang SC', -apple-system, MiSans, sans-serif;
@@ -184,7 +201,7 @@ const hideEmail = (email) => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .detail-body {
@@ -194,14 +211,14 @@ const hideEmail = (email) => {
 .detail-label {
   font-size: 13px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 12px;
 }
 
 .detail-content {
-  background: #FAFAFA;
+  background: var(--bg-input);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 16px;
@@ -213,7 +230,7 @@ const hideEmail = (email) => {
   font-family: inherit;
   font-size: 14px;
   line-height: 1.8;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .detail-tags {
@@ -228,8 +245,8 @@ const hideEmail = (email) => {
 
 .tag-item {
   padding: 4px 12px;
-  background: #F5F5F5;
-  color: #666;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-radius: 4px;
   font-size: 13px;
 }
@@ -238,13 +255,13 @@ const hideEmail = (email) => {
   display: flex;
   gap: 12px;
   padding: 24px 32px;
-  border-top: 1px solid #F0F0F0;
+  border-top: 1px solid var(--border);
 }
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -254,7 +271,7 @@ const hideEmail = (email) => {
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -264,7 +281,7 @@ const hideEmail = (email) => {
 .btn-ghost {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
+  color: var(--text-secondary);
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -272,14 +289,33 @@ const hideEmail = (email) => {
 }
 
 .btn-ghost:hover {
-  color: #1A1A1A;
+  color: var(--text-primary);
+}
+
+.btn-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-theme:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .btn-edit {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
-  border: 1px solid #ddd;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
@@ -287,8 +323,8 @@ const hideEmail = (email) => {
 }
 
 .btn-edit:hover {
-  color: #1A1A1A;
-  border-color: #999;
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 .btn-like {
@@ -296,9 +332,9 @@ const hideEmail = (email) => {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #FFF;
+  background: var(--bg-surface);
   color: #E53935;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
   cursor: pointer;
@@ -327,9 +363,9 @@ const hideEmail = (email) => {
 
 .btn-danger {
   padding: 10px 20px;
-  background: #FFF;
-  color: #999;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
   cursor: pointer;

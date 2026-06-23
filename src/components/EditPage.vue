@@ -7,7 +7,24 @@
       <div class="nav-center">
         <span class="logo-text">编辑提示词</span>
       </div>
-      <div class="nav-right"></div>
+      <div class="nav-right">
+        <button @click="toggleTheme" class="btn-theme" :title="theme === 'light' ? '切换深色模式' : '切换浅色模式'">
+          <svg v-if="theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="form-page">
@@ -61,8 +78,8 @@ import axios from 'axios'
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 const {
-  editPrompt, editForm, isLoading,
-  onSaveEditHandler, onCancelEdit
+  editPrompt, editForm, isLoading, theme,
+  onSaveEditHandler, onCancelEdit, toggleTheme
 } = inject('appState')
 
 const route = useRoute()
@@ -104,8 +121,8 @@ const getCategoryIcon = (cat) => {
   justify-content: space-between;
   height: 60px;
   padding: 0 32px;
-  background: #fff;
-  border-bottom: 1px solid #F0F0F0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -126,7 +143,7 @@ const getCategoryIcon = (cat) => {
 .logo-text {
   font-size: 18px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -137,8 +154,8 @@ const getCategoryIcon = (cat) => {
 }
 
 .form-card {
-  background: #fff;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 32px;
 }
@@ -151,7 +168,7 @@ const getCategoryIcon = (cat) => {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
@@ -159,19 +176,20 @@ const getCategoryIcon = (cat) => {
 .form-group textarea {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
-  background: #FAFAFA;
+  background: var(--bg-input);
   transition: all 0.2s;
   font-family: inherit;
+  color: var(--text-primary);
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #1A1A1A;
-  background: #fff;
+  border-color: var(--text-primary);
+  background: var(--bg-surface);
 }
 
 .form-group textarea {
@@ -195,23 +213,23 @@ const getCategoryIcon = (cat) => {
 
 .cat-option {
   padding: 8px 16px;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .cat-option:hover {
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 .cat-option.selected {
-  background: #1A1A1A;
-  border-color: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
 }
 
 .cat-icon {
@@ -230,8 +248,8 @@ const getCategoryIcon = (cat) => {
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -241,7 +259,7 @@ const getCategoryIcon = (cat) => {
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -249,14 +267,14 @@ const getCategoryIcon = (cat) => {
 }
 
 .btn-primary:disabled {
-  background: #CCC;
+  background: var(--btn-disabled);
   cursor: not-allowed;
 }
 
 .btn-ghost {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
+  color: var(--text-secondary);
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -264,6 +282,25 @@ const getCategoryIcon = (cat) => {
 }
 
 .btn-ghost:hover {
-  color: #1A1A1A;
+  color: var(--text-primary);
+}
+
+.btn-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-theme:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>

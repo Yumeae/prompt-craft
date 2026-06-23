@@ -40,7 +40,7 @@ const handleLogin = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #FAFAFA;
+  background: var(--bg-page);
 }
 
 .login-container {
@@ -58,13 +58,13 @@ const handleLogin = async () => {
   font-size: 48px;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #1A1A1A;
+  color: var(--text-primary);
   font-family: 'PingFang SC', -apple-system, MiSans, sans-serif;
 }
 
 .login-slogan {
   font-size: 16px;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 8px;
 }
 
@@ -77,21 +77,22 @@ const handleLogin = async () => {
 .input-group input {
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
-  background: #fff;
+  background: var(--bg-surface);
   transition: border-color 0.2s;
+  color: var(--text-primary);
 }
 
 .input-group input:focus {
   outline: none;
-  border-color: #1A1A1A;
+  border-color: var(--text-primary);
 }
 
 .hint-text {
   text-align: center;
-  color: #BBB;
+  color: var(--text-weak);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -103,8 +104,8 @@ const handleLogin = async () => {
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -114,7 +115,7 @@ const handleLogin = async () => {
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -122,7 +123,7 @@ const handleLogin = async () => {
 }
 
 .btn-primary:disabled {
-  background: #CCC;
+  background: var(--btn-disabled);
   cursor: not-allowed;
 }
 

@@ -63,12 +63,12 @@ defineProps({
 }
 
 .modal-container {
-  background: #fff;
+  background: var(--bg-surface);
   border-radius: 16px;
   width: 90%;
   max-width: 400px;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 60px var(--shadow-md);
 }
 
 .modal-header {
@@ -116,7 +116,7 @@ defineProps({
 .modal-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
 }
 
 .modal-body {
@@ -125,7 +125,7 @@ defineProps({
 
 .modal-message {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -134,14 +134,14 @@ defineProps({
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  background: #FAFAFA;
-  border-top: 1px solid #F0F0F0;
+  background: var(--bg-page);
+  border-top: 1px solid var(--border);
 }
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -151,7 +151,7 @@ defineProps({
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -161,7 +161,7 @@ defineProps({
 .btn-ghost {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
+  color: var(--text-secondary);
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -169,7 +169,7 @@ defineProps({
 }
 
 .btn-ghost:hover {
-  color: #1A1A1A;
+  color: var(--text-primary);
 }
 
 .modal-enter-active,

@@ -7,7 +7,24 @@
       <div class="nav-center">
         <span class="logo-text">个人中心</span>
       </div>
-      <div class="nav-right"></div>
+      <div class="nav-right">
+        <button @click="toggleTheme" class="btn-theme" :title="theme === 'light' ? '切换深色模式' : '切换浅色模式'">
+          <svg v-if="theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="profile-page">
@@ -73,7 +90,7 @@
 <script setup>
 import { ref, inject, onMounted } from 'vue'
 
-const { currentUser, promptList, onGoBack, onShowDetail, fetchMyPrompts } = inject('appState')
+const { currentUser, promptList, theme, onGoBack, onShowDetail, fetchMyPrompts, toggleTheme } = inject('appState')
 
 const showEmail = ref(false)
 
@@ -94,8 +111,8 @@ const hideEmail = (email) => {
   justify-content: space-between;
   height: 60px;
   padding: 0 32px;
-  background: #fff;
-  border-bottom: 1px solid #F0F0F0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -116,7 +133,7 @@ const hideEmail = (email) => {
 .logo-text {
   font-size: 18px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -130,8 +147,8 @@ const hideEmail = (email) => {
 }
 
 .profile-card {
-  background: #fff;
-  border: 1px solid #E5E5E5;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
 }
@@ -139,10 +156,10 @@ const hideEmail = (email) => {
 .profile-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #F0F0F0;
+  border-bottom: 1px solid var(--border);
 }
 
 .profile-info {
@@ -159,12 +176,12 @@ const hideEmail = (email) => {
 
 .info-label {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .info-value {
   font-size: 14px;
-  color: #1A1A1A;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -177,8 +194,8 @@ const hideEmail = (email) => {
 .btn-toggle {
   padding: 4px 8px;
   background: transparent;
-  color: #1A1A1A;
-  border: 1px solid #E5E5E5;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
@@ -186,13 +203,13 @@ const hideEmail = (email) => {
 }
 
 .btn-toggle:hover {
-  background: #F5F5F5;
+  background: var(--bg-hover);
 }
 
 .empty-state {
   text-align: center;
   padding: 80px 20px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state p {
@@ -207,15 +224,15 @@ const hideEmail = (email) => {
 
 .my-prompt-item {
   padding: 16px;
-  border: 1px solid #E5E5E5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .my-prompt-item:hover {
-  border-color: #D0D0D0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-color: var(--border-hover);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .my-prompt-header {
@@ -228,8 +245,8 @@ const hideEmail = (email) => {
 .card-category {
   display: inline-block;
   padding: 2px 10px;
-  background: #F5F5F5;
-  color: #666;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-radius: 4px;
   font-size: 12px;
 }
@@ -237,13 +254,13 @@ const hideEmail = (email) => {
 .my-prompt-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 
 .my-prompt-desc {
   font-size: 13px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .my-prompt-likes {
@@ -253,8 +270,8 @@ const hideEmail = (email) => {
 
 .btn-primary {
   padding: 12px 24px;
-  background: #1A1A1A;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -264,7 +281,7 @@ const hideEmail = (email) => {
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:active {
@@ -274,7 +291,7 @@ const hideEmail = (email) => {
 .btn-ghost {
   padding: 8px 16px;
   background: transparent;
-  color: #666;
+  color: var(--text-secondary);
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -282,6 +299,25 @@ const hideEmail = (email) => {
 }
 
 .btn-ghost:hover {
-  color: #1A1A1A;
+  color: var(--text-primary);
+}
+
+.btn-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-theme:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>
