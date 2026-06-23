@@ -412,7 +412,45 @@ const getSuggestions = async (keyword) => {
 }
 ```
 
-### 4.1.3 提示词详情模块
+### 4.1.3 搜索与联想模块
+
+搜索框输入时通过 watch 监听，300ms 防抖后触发搜索请求和联想查询。选择联想项时清空搜索框并跳转详情页，通过 `isSelecting` 标志防止 watch 重复触发。
+
+```javascript
+watch(searchText, (newValue) => {
+  if (isSelecting) return
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    if (newValue.trim()) {
+      activeCategory.value = '全部'
+      await searchPrompts(newValue)
+      suggestions.value = await getSuggestions(newValue)
+      showSuggestions.value = suggestions.value.length > 0
+    } else {
+      await fetchPrompts()
+      suggestions.value = []
+    }
+  }, 300)
+})
+```
+
+### 4.1.4 通用弹窗模块
+
+使用 Promise 封装 alert/confirm 弹窗，调用 `await showConfirm('确定删除？')` 即可等待用户操作，解决原生 `confirm()` 阻塞且不可定制的问题。弹窗支持 success/error/warning/info 四种图标。
+
+```javascript
+const showConfirm = (message, title = '确认', icon = 'warning') => {
+  return new Promise((resolve) => {
+    modal.value = { visible: true, type: 'confirm', title, message, icon, resolve }
+  })
+}
+const handleModalOk = () => {
+  if (modal.value.resolve) modal.value.resolve(true)
+  modal.value.visible = false
+}
+```
+
+### 4.1.5 提示词详情模块
 
 详情页展示提示词完整内容、分类标签、作者信息（邮箱脱敏）、发布时间。提供一键复制、点赞、编辑和删除按钮。编辑和删除仅对作者和管理员可见，实现前端权限控制。
 
@@ -423,7 +461,7 @@ const getSuggestions = async (keyword) => {
   @click="onDelete(currentPrompt.id)">删除</button>
 ```
 
-### 4.1.4 提示词发布模块
+### 4.1.6 提示词发布模块
 
 发布页提供表单填写标题、选择分类、输入内容和标签。前端实时校验：标题至少 3 字符、内容至少 10 字符，不满足时输入框标红提示。提交时附带 JWT 令牌，后端校验登录状态。
 
@@ -439,7 +477,7 @@ const createPrompt = async (promptData) => {
 }
 ```
 
-### 4.1.5 提示词编辑模块
+### 4.1.7 提示词编辑模块
 
 编辑页复用发布页表单结构，进入时自动填充原数据。提交前弹出确认对话框，保存成功后刷新列表并跳转主页。由 useEdit composable 管理编辑状态。
 
@@ -461,7 +499,7 @@ const onSaveEdit = async (navigateTo) => {
 }
 ```
 
-### 4.1.6 一键复制模块
+### 4.1.8 一键复制模块
 
 点击"一键复制"按钮，内容自动复制到剪贴板，鼠标位置弹出浮动气泡提示"已复制到剪贴板！"，1.5 秒后消失。优先使用 `navigator.clipboard` API，不支持时降级为 `execCommand('copy')`。
 
@@ -479,7 +517,7 @@ const copyToClipboard = async (text, event) => {
 }
 ```
 
-### 4.1.7 删除模块
+### 4.1.9 删除模块
 
 点击删除按钮后弹出确认对话框，确认后调用 DELETE 接口，成功后自动刷新列表。后端校验操作者是否为作者或管理员，防止水平越权。
 
@@ -495,7 +533,7 @@ const deletePrompt = async (id) => {
 }
 ```
 
-### 4.1.8 个人中心模块
+### 4.1.10 个人中心模块
 
 个人中心页展示当前用户账号信息（用户名、邮箱可切换显示/脱敏、发布数量）及"我的提示词"列表。通过 GET `/api/prompts/mine` 接口获取当前用户发布的提示词。
 
@@ -510,7 +548,7 @@ const fetchMyPrompts = async () => {
 }
 ```
 
-### 4.1.9 点赞模块
+### 4.1.11 点赞模块
 
 用户可对提示词点赞或取消点赞，前端实时更新点赞数和按钮状态，通过 user_likes 联合唯一约束防止重复点赞。
 
@@ -527,7 +565,7 @@ const likePrompt = async (id) => {
 }
 ```
 
-### 4.1.10 深色/浅色主题切换
+### 4.1.12 深色/浅色主题切换
 
 全站支持深色与浅色两套主题，通过导航栏月亮/太阳图标切换。切换时从按钮位置以圆形扩散动画覆盖全屏（Web Animations API + clip-path），采用 ease-in 缓动加速扩散。主题偏好持久化到 localStorage，自动检测系统 `prefers-color-scheme`。所有组件通过 CSS 变量引用颜色，杜绝硬编码。
 
