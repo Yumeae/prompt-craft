@@ -685,7 +685,10 @@ const stmts = {
 ```javascript
 // 漏洞版（仅搜索接口，供演示）
 const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%'`
-db.prepare(sql).all()  // 输入 ' OR '1'='1 可注入
+db.prepare(sql).all()
+// 输入 ' OR '1'='1 拼接后变成：
+// SELECT * FROM prompts WHERE title LIKE '%' OR '1'='1%'
+// 条件恒真，返回全部数据
 
 // 安全版（其余所有接口均使用预编译语句）
 stmts.getAllPrompts.all()                          // GET /api/prompts
