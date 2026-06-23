@@ -590,53 +590,106 @@ const toggleThemeWithAnimation = (event) => {
 
 ## 4.2 后端实现
 
-### 4.2.1 服务器与中间件配置
+### 4.2.1 路由与中间件配置
 
-Express 服务器配置了 JSON 解析、CORS 跨域支持、JWT 认证中间件：
+Express 服务器配置 JSON 解析、CORS 跨域支持。JWT 认证中间件从 Authorization 头提取令牌，验证签名和有效期，通过后将用户信息挂载到 `req.user`。
 
 ```javascript
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const app = express();
-
-app.use(express.json());
-app.use(cors());
-
-const JWT_SECRET = 'promptcraft_jwt_secret_2026_secure_key';
+app.use(express.json())
+app.use(cors())
 
 const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: '未提供认证令牌' });
+  const token = req.headers['authorization']?.split(' ')[1]
+  if (!token) return res.status(401).json({ error: '未提供认证令牌' })
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: '令牌无效或已过期' });
-    req.user = user;
-    next();
-  });
-};
+    if (err) return res.status(403).json({ error: '令牌无效或已过期' })
+    req.user = user
+    next()
+  })
+}
 ```
 
-### 4.2.2 数据库操作
-
-使用 better-sqlite3 的预编译语句，确保参数化查询：
+服务器同时托管 Vite 构建产物，实现前后端同源部署，SPA 通配路由回退到 index.html：
 
 ```javascript
-const Database = require('better-sqlite3');
-const db = new Database(':memory:');
+app.use(express.static(path.join(__dirname, '../dist')))
+app.get('/*path', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'))
+})
+```
 
+### 4.2.2 数据库操作封装
+
+使用 better-sqlite3 预编译语句，所有查询均使用 `?` 占位符，杜绝 SQL 注入。建表时设置外键约束和联合唯一约束。
+
+```javascript
+const db = new Database(':memory:')
 db.exec(`CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE, password TEXT, email TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+)`)
+// ... prompts、user_likes 表同理
 
 const stmts = {
   findUser: db.prepare(`SELECT * FROM users WHERE username = ? AND password = ?`),
   getAllPrompts: db.prepare(`SELECT * FROM prompts ORDER BY created_at DESC`),
-  insertPrompt: db.prepare(`INSERT INTO prompts (title, content, category, tags, author_id, author_name, author_email) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-};
+  insertPrompt: db.prepare(`INSERT INTO prompts (...) VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  findLike: db.prepare(`SELECT id FROM user_likes WHERE user_id = ? AND prompt_id = ?`),
+  // ... 共 15 个预编译语句
+}
 ```
 
-### 4.2.3 安全加固
+### 4.2.3 接口设计
+
+共 12 个 RESTful API，按功能分为四类：
+
+**认证接口：**
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | /api/login | 用户登录，签发 JWT（24h 有效期） | 否 |
+
+**提示词 CRUD 接口：**
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | /api/prompts | 获取全部提示词（按时间倒序） | 否 |
+| GET | /api/prompts/:id | 获取单个提示词详情 | 否 |
+| GET | /api/prompts/mine | 获取当前用户发布的提示词 | JWT |
+| GET | /api/prompts/liked | 获取当前用户点赞的提示词 | JWT |
+| POST | /api/prompts | 发布新提示词 | JWT |
+| PUT | /api/prompts/:id | 编辑提示词（含属主校验） | JWT |
+| DELETE | /api/prompts/:id | 删除提示词（含属主校验） | JWT |
+
+**互动接口：**
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| PUT | /api/prompts/:id/like | 点赞/取消点赞切换 | JWT |
+| GET | /api/prompts/:id/like-status | 查询当前用户点赞状态 | JWT |
+
+**搜索接口：**
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | /api/search?q=xxx | 全文搜索（标题/内容/标签） | 否 |
+| GET | /api/suggestions?q=xxx | 搜索联想（返回标题+id，限5条） | 否 |
+
+所有接口统一返回 JSON 格式，错误时返回 `{ error: "..." }` 并设置对应 HTTP 状态码。
+
+### 4.2.4 安全加固
+
+**SQL 注入防护与漏洞演示：** 搜索接口故意使用字符串拼接构造 SQL，输入 `' OR '1'='1` 可返回全部数据，供课堂攻防对比。其余接口均使用预编译语句 `?` 占位符，用户输入被当作纯文本，彻底阻断注入。
+
+```javascript
+// 漏洞版（仅搜索接口，供演示）
+const sql = `SELECT * FROM prompts WHERE title LIKE '%${q}%'`
+db.prepare(sql).all()  // 输入 ' OR '1'='1 可注入
+
+// 安全版（其余所有接口）
+stmts.getSuggestions.all(`%${q}%`)  // 参数化查询，无法注入
+```
 
 **邮箱脱敏：** API 返回提示词数据时，对 author_email 字段做正则脱敏处理：
 
