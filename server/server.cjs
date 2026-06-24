@@ -4,6 +4,9 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const app = express();
 
+// 信任反向代理（Render.com、Nginx 等），使 req.ip 返回真实客户端 IP
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(cors());
 
